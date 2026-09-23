@@ -5,8 +5,13 @@ name: Publish read-only dashboard
 # https://vivarium-collective.github.io/viva-biomodels/dashboard/). A read-only mirror of every
 # investigation + study on main, browsable with no server.
 #
+# The gh-pages root (https://vivarium-collective.github.io/viva-biomodels/) is a
+# tiny redirect to dashboard/, so the site index IS the read-only workbench.
+# This job owns the whole gh-pages branch: it rewrites root each run (clearing
+# any stale scaffold left at the root by an earlier build).
+#
 # Scaffolded by `vivarium-workbench add-dashboard`. DEPLOY job (post-merge), not
-# a PR gate; it only ever writes dashboard/ on gh-pages.
+# a PR gate.
 
 on:
   push:
@@ -78,11 +83,30 @@ jobs:
             git checkout -B gh-pages origin/gh-pages
           else
             git checkout --orphan gh-pages
-            git rm -rf . >/dev/null 2>&1 || true
-            touch .nojekyll
           fi
-          rm -rf dashboard && mkdir -p dashboard
+          # This job owns the whole branch: wipe it and rebuild from scratch so
+          # no stale root scaffold survives, then lay down the redirect + bundle.
+          git rm -rf . >/dev/null 2>&1 || true
+          touch .nojekyll
+          mkdir -p dashboard
           cp -R "$GITHUB_WORKSPACE/reports/published/dashboard/." dashboard/
+          # Root index redirects to the workbench, so the site index is the
+          # read-only workbench itself.
+          cat > index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>viva-biomodels — read-only workbench</title>
+            <meta http-equiv="refresh" content="0; url=./dashboard/">
+            <link rel="canonical" href="./dashboard/">
+          </head>
+          <body>
+            <p>Redirecting to the
+              <a href="./dashboard/">viva-biomodels read-only workbench</a>…</p>
+          </body>
+          </html>
+          HTML
           git add -A
           if git diff --cached --quiet; then
             echo "dashboard snapshot unchanged; skipping commit"
