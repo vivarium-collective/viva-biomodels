@@ -10,7 +10,7 @@ from viva_biomodels.steps.simulators import (
     BiomodelsTelluriumStep,
 )
 from pbg_copasi.processes import CopasiUTCStep
-from pbg_simbio.processes import SimbioUTCStep
+from viva_simbio.processes import SimbioUTCStep
 from pbg_tellurium.processes import TelluriumUTCStep
 
 

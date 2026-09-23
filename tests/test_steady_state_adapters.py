@@ -67,7 +67,7 @@ def test_tellurium_steady_state_adapter(monkeypatch):
 
 
 def test_simbio_steady_state_adapter(monkeypatch):
-    _patch_upstream(monkeypatch, "pbg_simbio.processes",
+    _patch_upstream(monkeypatch, "viva_simbio.processes",
                     "SimbioSteadyStateStep", _FakeSteadyStateClass)
     from viva_biomodels.steps.simulators import BiomodelsSimbioSteadyStateStep
     out = BiomodelsSimbioSteadyStateStep(core=allocate_core()).update({"model_source": "/tmp/m.xml"})

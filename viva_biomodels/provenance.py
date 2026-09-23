@@ -25,9 +25,9 @@ _SIM_PACKAGES: Dict[str, Dict[str, Any]] = {
                   "lib_mods": ["basico", "COPASI"], "lib_dist": "python-copasi"},
     "tellurium": {"wrapper_mod": "pbg_tellurium", "wrapper_dist": "pbg-tellurium",
                   "lib_mods": ["tellurium"],       "lib_dist": "tellurium"},
-    "simbio":    {"wrapper_mod": "pbg_simbio",    "wrapper_dist": "pbg-simbio",
+    "simbio":    {"wrapper_mod": "viva_simbio",    "wrapper_dist": "viva-simbio",
                   "lib_mods": ["simbio"],          "lib_dist": "simbio"},
-    "amici":     {"wrapper_mod": "pbg_amici",     "wrapper_dist": "pbg-amici",
+    "amici":     {"wrapper_mod": "viva_amici",     "wrapper_dist": "viva-amici",
                   "lib_mods": ["amici"],           "lib_dist": "amici"},
 }
 

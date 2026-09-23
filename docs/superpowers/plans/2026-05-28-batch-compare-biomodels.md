@@ -6,7 +6,7 @@
 
 **Architecture:** New code lives alongside the existing `compare-biomodel` generator (which stays untouched as legacy). Each per-biomodel `LoadBiomodelStep` writes a `biomodel_jobs` record into a shared `models` map; M `SimulatorRunnerStep` instances (one per requested simulator) iterate the map and dispatch each job to a per-simulator UTC or SteadyState adapter; a single `BatchCompareStep` reads the full nested results and produces an all-pairs nRMSE matrix per `(biomodel, sedml_doc)`.
 
-**Tech Stack:** Python 3.12, `process-bigraph`, `bigraph-schema`, `libsedml`, `libsbml`, `pbg-copasi` / `pbg-tellurium` / `pbg-simbio` (sibling packages), `plotly` (viz), `pytest`.
+**Tech Stack:** Python 3.12, `process-bigraph`, `bigraph-schema`, `libsedml`, `libsbml`, `pbg-copasi` / `pbg-tellurium` / `viva-simbio` (sibling packages), `plotly` (viz), `pytest`.
 
 **Spec:** `docs/superpowers/specs/2026-05-28-batch-compare-biomodels-design.md`
 
@@ -702,7 +702,7 @@ def test_tellurium_steady_state_adapter(monkeypatch):
 
 
 def test_simbio_steady_state_adapter(monkeypatch):
-    _patch_upstream(monkeypatch, "pbg_simbio.processes",
+    _patch_upstream(monkeypatch, "viva_simbio.processes",
                     "SimbioSteadyStateStep", _FakeSteadyStateClass)
     from pbg_biomodels.steps.simulators import BiomodelsSimbioSteadyStateStep
     out = BiomodelsSimbioSteadyStateStep().update({"model_source": "/tmp/m.xml"})
@@ -811,7 +811,7 @@ class BiomodelsSimbioSteadyStateStep(Step):
         return {"result": "simulation_result"}
 
     def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        from pbg_simbio.processes import SimbioSteadyStateStep  # lazy upstream import
+        from viva_simbio.processes import SimbioSteadyStateStep  # lazy upstream import
         inner = SimbioSteadyStateStep(
             config={"model_source": state["model_source"]}, core=self.core,
         )

@@ -30,7 +30,7 @@ def build_core():
     for cls, dotted in _iter_workspace_edges(viva_biomodels):
         core.register_link(dotted, cls)
         core.register_link(cls.__name__, cls)
-    # Register the canonical simulator Process classes (pbg-simbio is an
+    # Register the canonical simulator Process classes (viva-simbio is an
     # editable install the dist-walker can't see; this keeps
     # `local:<Sim>UTCProcess` resolvable for the biomodel-process composite).
     from viva_biomodels.simulators import register_simulator_backends

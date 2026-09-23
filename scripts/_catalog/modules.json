@@ -178,12 +178,12 @@
     ]
   },
   {
-    "name": "pbg-simbio",
+    "name": "viva-simbio",
     "description": "Process-bigraph wrapper for simbio (Chemical Reaction Network simulation): load models from Antimony, simulate with simbio",
-    "source": "https://github.com/vivarium-collective/pbg-simbio.git",
+    "source": "https://github.com/vivarium-collective/viva-simbio.git",
     "ref": "main",
-    "package": "pbg_simbio",
-    "homepage": "https://github.com/vivarium-collective/pbg-simbio",
+    "package": "viva_simbio",
+    "homepage": "https://github.com/vivarium-collective/viva-simbio",
     "tags": [
       "sbml",
       "ode",

@@ -17,7 +17,7 @@ Additionally, `LoadBiomodelStep` only extracts the first `UniformTimeCourse` sim
 A new composite `batch-compare-biomodels` that:
 
 - Has **one Step per simulator**, not one per (simulator × biomodel). The runner iterates jobs internally.
-- Supports both **uniform time course** and **steady-state** SED-ML tasks. Each simulator gets a UTC step (already exists) and a new SteadyState step (new work in the sibling `pbg-copasi`, `pbg-tellurium`, `pbg-simbio` packages).
+- Supports both **uniform time course** and **steady-state** SED-ML tasks. Each simulator gets a UTC step (already exists) and a new SteadyState step (new work in the sibling `pbg-copasi`, `pbg-tellurium`, `viva-simbio` packages).
 - Supports **multiple SED-ML tasks per biomodel** (a biomodel can declare more than one UTC or SS simulation, each with its own duration / n_points).
 - Stores results in a self-describing **nested** schema: `results[biomodel_id][simulator][sedml_doc] = simulation_result`.
 - Has a **comparison step that reads the full results store** and produces all-pairs nRMSE across whatever simulators produced output, per `(biomodel_id, sedml_doc)`. Generalizes to N simulators automatically.
@@ -84,7 +84,7 @@ state.comparisons:  map[biomodel_id, map[sedml_doc, tree]]
 
 - `pbg_copasi.processes.CopasiSteadyStateStep` — wraps COPASI's `SteadyStateTask`.
 - `pbg_tellurium.processes.TelluriumSteadyStateStep` — wraps `roadrunner.steadyState()`.
-- `pbg_simbio.processes.SimbioSteadyStateStep` — wraps simbio's steady-state solver.
+- `viva_simbio.processes.SimbioSteadyStateStep` — wraps simbio's steady-state solver.
 
 Each takes `model_source` (SBML path) + simulator-specific knobs and emits `{observables: map[name, float]}`. These are real upstream PRs and block the runner's end-to-end tests; pbg-biomodels' own tests use dummy adapters during the period the upstream work is in flight.
 
@@ -200,7 +200,7 @@ Existing `tests/test_compare_biomodel_generator.py` and friends are untouched.
 
 - Job execution: **sequential in-process** loop inside each runner Step.
 - Result shape: **tagged union** per sedml doc (`{kind, time?, observables}`).
-- SS Step location: **sibling repos** (pbg-copasi, pbg-tellurium, pbg-simbio).
+- SS Step location: **sibling repos** (pbg-copasi, pbg-tellurium, viva-simbio).
 - Dispatcher: **per-biomodel `LoadBiomodelStep` + index store** (`models`).
 - Comparison scope: **per `(biomodel, sedml_doc)`, all-pairs across simulators**, no cross-kind.
 - Naming + scope: **new `batch-compare-biomodels` composite alongside legacy**, with SS + multi-sedml + nested schema delivered together.

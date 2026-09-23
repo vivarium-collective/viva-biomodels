@@ -1,10 +1,10 @@
-"""Thin runtime-input wrappers around pbg-copasi / pbg-tellurium / pbg-simbio UTC Steps.
+"""Thin runtime-input wrappers around pbg-copasi / pbg-tellurium / viva-simbio UTC Steps.
 
 Adapter Steps for the compare-biomodel composite: take ``model_source``,
 ``time``, ``n_points`` as runtime inputs (so LoadBiomodelStep can feed
 them dynamically) and emit the canonical ``numeric_result`` shape on the
 ``result`` output port. Delegates the actual simulation to the canonical
-classes in pbg-tellurium, pbg-copasi, and pbg-simbio.
+classes in pbg-tellurium, pbg-copasi, and viva-simbio.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import Any, ClassVar, Dict
 from process_bigraph import Step
 
 from pbg_copasi.processes import CopasiUTCStep
-from pbg_simbio.processes import SimbioUTCStep
+from viva_simbio.processes import SimbioUTCStep
 from pbg_tellurium.processes import TelluriumUTCStep
 
 
@@ -113,7 +113,7 @@ class BiomodelsTelluriumStep(Step):
 
 
 class BiomodelsSimbioStep(Step):
-    """Adapter: runtime ``model_source`` → ``pbg_simbio.SimbioUTCStep``.
+    """Adapter: runtime ``model_source`` → ``viva_simbio.SimbioUTCStep``.
 
     SimbioUTCStep.config_schema uses keys: model_source, model_format, time,
     n_points. Like the COPASI adapter, its update() already returns
@@ -228,7 +228,7 @@ class BiomodelsSimbioSteadyStateStep(Step):
         return {"result": "simulation_result"}
 
     def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        from pbg_simbio.processes import SimbioSteadyStateStep  # lazy upstream import
+        from viva_simbio.processes import SimbioSteadyStateStep  # lazy upstream import
         inner = SimbioSteadyStateStep(
             config={"model_source": state["model_source"]}, core=self.core,
         )
