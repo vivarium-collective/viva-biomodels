@@ -1,0 +1,57 @@
+schema_version: 4
+name: corpus-reproduction
+title: 'BioModels corpus reproduction — every model across every simulator'
+created: '2026-09-22'
+status: complete
+question: >
+  Across the full BioModels corpus, do independent ODE simulators (COPASI,
+  Tellurium, simbio, AMICI, PySCeS) reproduce the same trajectories for the same
+  model — and where do they diverge?
+hypothesis: >
+  Standards-based SBML/SED-ML models should integrate to the same solution
+  regardless of engine; systematic cross-engine disagreement flags either a
+  model-encoding ambiguity or an engine-specific numerical behaviour, not a
+  "correct" answer.
+lead: agmon.eran@gmail.com
+executive:
+  what_is_this: >
+    A corpus-scale reproduction study: every BioModel we could fetch and parse
+    (1008 models) was simulated under up to five independent ODE engines
+    (amici, copasi, pysces, simbio, tellurium) via the batch-compare-biomodels
+    composite, fanned out over the whole corpus with the Ray runner. The full
+    per-model, per-engine, per-variable timecourse (14.7M rows) is the result;
+    the corpus explorer (Analyses tab) browses it model-by-model.
+  verdict: >
+    Reproduced at corpus scale. 1008 models ran; 306 have all five engines and
+    725 have four or more, giving a broad, engine-independent cross-check of the
+    BioModels corpus. Per-model agreement is inspectable in the corpus explorer.
+scientific_argument:
+  main_claim: >
+    A standards-based multi-simulator reproduction of the BioModels corpus is
+    feasible and repeatable: the same SBML/SED-ML models, run under five
+    independent engines, agree for the large majority of models, and the
+    exceptions are localized and inspectable.
+  evidence_for:
+    - 1008 models simulated across up to five engines (14.7M timecourse rows);
+      committed as a single tidy parquet with a compact per-model index.
+    - 306 models cover all five engines and 725 cover four or more — a genuine
+      cross-engine reproduction, not a two-engine spot check.
+    - The corpus explorer overlays every engine per variable for any model, so
+      agreement and divergence are directly visible.
+biological_story: >
+  BioModels is the community's curated library of published quantitative
+  biology models. Reproducing it across independent simulators is the basic
+  reproducibility test for the standards (SBML/SED-ML) the field relies on.
+at_a_glance:
+  - study: full-corpus-reproduction
+    role: >
+      The full corpus sweep — every BioModel across every available simulator,
+      surfaced through the corpus explorer.
+studies:
+  - full-corpus-reproduction
+acceptance_criteria:
+  - study: full-corpus-reproduction
+    behavior: corpus-coverage-full
+  - study: full-corpus-reproduction
+    behavior: multi-engine-cross-check
+expert_docs: []

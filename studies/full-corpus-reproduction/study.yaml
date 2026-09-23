@@ -1,0 +1,84 @@
+schema_version: 4
+name: full-corpus-reproduction
+investigation: corpus-reproduction
+title: 'Full BioModels reproduction across all simulators (1008 models × 5 engines)'
+created: '2026-09-22'
+status: complete
+phase: Decide
+confidence: Reported
+claim: >
+  Running the full BioModels corpus through the batch-compare-biomodels
+  composite under up to five independent ODE engines reproduces 1008 models
+  (14.7M timecourse rows); 306 models are covered by all five engines and 725
+  by four or more. The complete per-model, per-engine result is committed and
+  browsable model-by-model in the corpus explorer.
+question: >
+  Across the entire BioModels corpus, do independent simulators (COPASI,
+  Tellurium, simbio, AMICI, PySCeS) reproduce the same trajectories, and where
+  do they diverge?
+hypothesis: >
+  Standards-based SBML/SED-ML models integrate to the same solution regardless
+  of engine; systematic disagreement flags a model-encoding ambiguity or an
+  engine-specific numerical behaviour.
+objective: >
+  Fetch and parse every BioModel, run each through every available simulator
+  via the batch-compare-biomodels composite (fanned out over the corpus with
+  the Ray runner), and record the full per-model, per-engine, per-variable
+  timecourse as a single tidy dataset for cross-engine comparison.
+description: >
+  This is the full-corpus reproduction run. The batch-compare-biomodels
+  composite fetches each model's SBML, parses every SED-ML simulation, runs
+  each engine over all jobs, and reports all-pairs nRMSE per (model, SED-ML
+  doc). Executed over the whole corpus with viva_biomodels.ray_runner
+  (one Ray task per model, crash-isolated). The result — 1008 models, up to
+  five engines each, 14.7M rows — is committed at
+  datasets/corpus_all_engines/ (a sorted tidy parquet + a compact per-model
+  index.json) and served to the corpus explorer (Analyses tab) as one JSON per
+  model for lazy, model-by-model browsing.
+baseline:
+  - name: baseline
+    composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
+    params:
+      simulators:
+        - copasi
+        - tellurium
+        - simbio
+        - amici
+        - pysces
+      include_steady_state: true
+    description: >
+      Per-model multi-engine comparison. The full run fans this composite over
+      every BioModel id (biomodels.get_all_identifiers()) via the Ray runner;
+      the committed dataset is the union of all per-model results.
+variants: []
+interventions: []
+expected_behavior:
+  - name: corpus-coverage-full
+    observable: n_models
+    condition: 'n_models >= 1000'
+    rationale: >
+      The reproduction must span the corpus, not a token subset. 1008 models
+      were fetched, parsed, and simulated.
+  - name: multi-engine-cross-check
+    observable: n_models_ge_4_engines
+    condition: 'n_models_ge_4_engines >= 700'
+    rationale: >
+      A genuine cross-engine reproduction needs most models covered by several
+      independent engines. 725 models have >=4 engines and 306 have all five.
+simulation_set:
+  - name: full-corpus
+    status: ran
+    base_model: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
+    seeds: [0]
+canonical_runs:
+  - name: full-corpus
+    default: true
+    description: >
+      The full corpus sweep over all BioModels across all five engines,
+      executed via viva_biomodels.ray_runner. Result committed at
+      datasets/corpus_all_engines/ (tidy parquet + per-model index).
+    dataset: datasets/corpus_all_engines/corpus_timecourse_all_engines.parquet
+    index: datasets/corpus_all_engines/index.json
+    n_models: 1008
+    n_rows: 14659367
+    engines: [amici, copasi, pysces, simbio, tellurium]
