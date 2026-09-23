@@ -1,7 +1,0 @@
-{
-  "mode": "snapshot",
-  "smsApiBase": "",
-  "repo": "https://github.com/vivarium-collective/viva-biomodels.git",
-  "commit": "3c6c6b65e96f8b5e41167c8707c8f773c44c0a55",
-  "generated_from_ref": "feat/zarr-export"
-}
