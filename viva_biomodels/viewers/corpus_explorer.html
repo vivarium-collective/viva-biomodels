@@ -1,0 +1,692 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Corpus Explorer</title>
+<meta name="description" content="Overlay five simulation engines across the BioModels corpus, one variable at a time.">
+<style>
+  :root {
+    --bg: #eef1f4;
+    --panel: #ffffff;
+    --panel-2: #f7f9fb;
+    --ink: #16202c;
+    --muted: #5c6a7a;
+    --faint: #8695a6;
+    --line: #dde3ea;
+    --line-strong: #c6cfda;
+    --accent: #1f6f8b;
+    --accent-soft: #e3eef2;
+    --good: #2ca25f;
+    --warn: #c9781f;
+    --grid: #e7ecf1;
+    --shadow: 0 1px 2px rgba(20,32,44,.06), 0 8px 24px rgba(20,32,44,.05);
+    /* engine colors — categorical, fixed, readable on both grounds */
+    --e-amici: #2f7ed8;
+    --e-copasi: #e08a2c;
+    --e-pysces: #8e5ad6;
+    --e-simbio: #24a05a;
+    --e-tellurium: #d94f8a;
+    --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1218;
+      --panel: #151d26;
+      --panel-2: #1b2530;
+      --ink: #e7edf4;
+      --muted: #97a5b6;
+      --faint: #6c7c8e;
+      --line: #263140;
+      --line-strong: #33455a;
+      --accent: #56b6d6;
+      --accent-soft: #17323d;
+      --good: #47c07c;
+      --warn: #e0a24a;
+      --grid: #212c39;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+      --e-amici: #56a4ec;
+      --e-copasi: #f0a94b;
+      --e-pysces: #a983e6;
+      --e-simbio: #3ec178;
+      --e-tellurium: #ef73a6;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1218;
+    --panel: #151d26;
+    --panel-2: #1b2530;
+    --ink: #e7edf4;
+    --muted: #97a5b6;
+    --faint: #6c7c8e;
+    --line: #263140;
+    --line-strong: #33455a;
+    --accent: #56b6d6;
+    --accent-soft: #17323d;
+    --good: #47c07c;
+    --warn: #e0a24a;
+    --grid: #212c39;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --e-amici: #56a4ec;
+    --e-copasi: #f0a94b;
+    --e-pysces: #a983e6;
+    --e-simbio: #3ec178;
+    --e-tellurium: #ef73a6;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+
+  /* ---- header ---- */
+  header.app {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 16px;
+    padding-block: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .titlebar { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .brand {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: .01em;
+    font-size: 15px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .brand .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--e-amici), var(--e-tellurium));
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .subtitle { color: var(--muted); font-size: 12.5px; }
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-left: auto; }
+  .stat { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; }
+  .stat b { font-family: var(--font-mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+
+  .legend { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .legend .lbl {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--faint); margin-right: 2px; align-self: center;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px 3px 8px; border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--panel-2);
+    font-family: var(--font-mono); font-size: 12px;
+    cursor: pointer; user-select: none;
+    transition: opacity .12s, background .12s, border-color .12s;
+  }
+  .chip .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .chip[aria-pressed="false"] { opacity: .4; }
+  .chip[aria-pressed="false"] .sw { filter: grayscale(1); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- shell ---- */
+  .shell {
+    display: grid;
+    grid-template-columns: minmax(240px, 320px) 1fr;
+    gap: 16px;
+    padding: 16px;
+    padding-block: 16px;
+    align-items: start;
+  }
+
+  /* ---- sidebar ---- */
+  aside {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 132px);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 160px);
+  }
+  .side-head { padding: 12px 12px 8px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--line-strong);
+    border-radius: 9px; padding: 7px 10px;
+  }
+  .search svg { flex: none; color: var(--faint); }
+  .search input {
+    border: none; background: none; color: var(--ink);
+    font-family: var(--font-mono); font-size: 13px; width: 100%; outline: none;
+  }
+  .sortrow { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
+  .sortrow .sortbtns { display: flex; gap: 4px; margin-left: auto; }
+  .sortbtn {
+    font-family: var(--font-mono); font-size: 11px;
+    padding: 3px 8px; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--line-strong); background: var(--panel-2); color: var(--muted);
+  }
+  .sortbtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .sortbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .modellist { overflow-y: auto; overflow-x: hidden; flex: 1; }
+  .mrow {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; cursor: pointer;
+    border-bottom: 1px solid var(--line);
+    border-left: 3px solid transparent;
+  }
+  .mrow:hover { background: var(--panel-2); }
+  .mrow[aria-selected="true"] { background: var(--accent-soft); border-left-color: var(--accent); }
+  .mrow .mid { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: -.01em; }
+  .mrow .mbadges { margin-left: auto; display: flex; gap: 5px; }
+  .badge {
+    font-family: var(--font-mono); font-size: 10.5px; font-variant-numeric: tabular-nums;
+    padding: 1px 7px; border-radius: 6px; background: var(--panel-2);
+    border: 1px solid var(--line-strong); color: var(--muted); white-space: nowrap;
+  }
+  .badge.eng { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line-strong)); }
+  .listmeta { padding: 7px 12px; font-size: 11px; color: var(--faint); border-top: 1px solid var(--line); font-family: var(--font-mono); }
+
+  /* ---- main ---- */
+  main { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .modelhead {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .modelhead h1 { font-family: var(--font-mono); font-size: 19px; margin: 0; letter-spacing: -.01em; }
+  .modelhead .mh-meta { color: var(--muted); font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .modelhead .mh-meta b { color: var(--ink); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .mh-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .varfilter {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--panel-2); border: 1px solid var(--line-strong);
+    border-radius: 9px; padding: 6px 10px;
+  }
+  .varfilter input { border: none; background: none; color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; outline: none; width: 130px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .card-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px 7px; border-bottom: 1px solid var(--line);
+  }
+  .card-head .vname { font-family: var(--font-mono); font-size: 13px; font-weight: 500; word-break: break-word; }
+  .card-head .vsub { margin-left: auto; font-size: 10.5px; color: var(--faint); font-family: var(--font-mono); white-space: nowrap; }
+  .plot { width: 100%; height: 220px; }
+
+  .jobskey { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--muted); padding: 2px 2px; }
+  .jobskey .jk { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
+  .jobskey .jline { width: 26px; height: 0; border-top: 2px solid var(--faint); }
+
+  /* ---- states ---- */
+  .state {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 40px 20px; text-align: center; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .state h2 { margin: 0; font-size: 15px; color: var(--ink); font-weight: 600; }
+  .state p { margin: 0; max-width: 42ch; font-size: 13px; }
+  .state.error { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+  .state.error h2 { color: var(--warn); }
+  .spinner {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 3px solid var(--line-strong); border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
+  .miss { font-family: var(--font-mono); font-size: 11px; color: var(--warn); }
+
+  @media (max-width: 820px) {
+    .shell { grid-template-columns: 1fr; }
+    aside { position: static; max-height: none; }
+    .modellist { max-height: 42vh; }
+    .stats { margin-left: 0; }
+  }
+</style>
+
+<header class="app">
+  <div class="titlebar">
+    <div class="brand"><span class="dot"></span>Corpus Explorer</div>
+    <div class="subtitle" id="subtitle">Multi-simulator BioModels comparison</div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="legend" id="legend">
+    <span class="lbl">Engines</span>
+  </div>
+</header>
+
+<div class="shell">
+  <aside>
+    <div class="side-head">
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="search" type="text" placeholder="filter by id…" autocomplete="off" spellcheck="false" aria-label="Filter models by id">
+      </div>
+      <div class="sortrow">
+        <span>sort</span>
+        <div class="sortbtns" id="sortbtns" role="group" aria-label="Sort models">
+          <button class="sortbtn" data-sort="id" aria-pressed="true">id</button>
+          <button class="sortbtn" data-sort="engines" aria-pressed="false">#eng</button>
+          <button class="sortbtn" data-sort="variables" aria-pressed="false">#var</button>
+        </div>
+      </div>
+    </div>
+    <div class="modellist" id="modellist" role="listbox" aria-label="Models"></div>
+    <div class="listmeta" id="listmeta"></div>
+  </aside>
+
+  <main id="main">
+    <div class="state" id="state">
+      <div class="spinner"></div>
+      <h2>Loading corpus…</h2>
+      <p>Fetching the model index.</p>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var DATA_BASE = "https://pub-eb913fbbdc584bd7add047c823570b13.r2.dev/biomodels-corpus";
+  var base = (new URLSearchParams(location.search).get("data") || DATA_BASE).replace(/\/+$/, "");
+
+  var ENGINE_ORDER = ["amici", "copasi", "pysces", "simbio", "tellurium"];
+  var DASHES = ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"];
+
+  var state = {
+    index: null,
+    engines: [],                 // engines present in dataset (ordered)
+    enabled: {},                 // engine -> bool
+    models: [],
+    sort: "id",
+    query: "",
+    selectedId: null,
+    series: null,                // current model's series payload
+    seriesCache: {},
+    varQuery: "",
+    reqToken: 0
+  };
+
+  var el = {
+    stats: document.getElementById("stats"),
+    legend: document.getElementById("legend"),
+    subtitle: document.getElementById("subtitle"),
+    search: document.getElementById("search"),
+    sortbtns: document.getElementById("sortbtns"),
+    modellist: document.getElementById("modellist"),
+    listmeta: document.getElementById("listmeta"),
+    main: document.getElementById("main")
+  };
+
+  function engColorVar(engine) { return "--e-" + engine; }
+  function engColor(engine) {
+    var c = getComputedStyle(document.documentElement).getPropertyValue(engColorVar(engine)).trim();
+    return c || "#888";
+  }
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  // ---------- fetch helpers ----------
+  function getJSON(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) { var e = new Error("HTTP " + r.status); e.status = r.status; throw e; }
+      return r.json();
+    });
+  }
+
+  // ---------- states ----------
+  function showState(kind, title, msg) {
+    var spin = kind === "loading" ? '<div class="spinner"></div>' : "";
+    el.main.innerHTML =
+      '<div class="state ' + (kind === "error" ? "error" : "") + '">' +
+      spin + "<h2>" + title + "</h2>" + (msg ? "<p>" + msg + "</p>" : "") + "</div>";
+  }
+
+  // ---------- header ----------
+  function renderHeader() {
+    var idx = state.index;
+    el.subtitle.textContent = (idx.dataset || "biomodels corpus") + " · 5-simulator comparison";
+    el.stats.innerHTML =
+      statTile(idx.n_models, "models") +
+      statTile(state.engines.length, "engines") +
+      statTile(fmtCompact(idx.n_rows), "rows");
+
+    // legend / engine toggles
+    var html = '<span class="lbl">Engines</span>';
+    state.engines.forEach(function (e) {
+      html +=
+        '<button class="chip" role="switch" aria-pressed="' + (state.enabled[e] ? "true" : "false") +
+        '" data-eng="' + e + '">' +
+        '<span class="sw" style="background:' + engColor(e) + '"></span>' + e + "</button>";
+    });
+    el.legend.innerHTML = html;
+    el.legend.querySelectorAll(".chip").forEach(function (c) {
+      c.addEventListener("click", function () {
+        var e = c.getAttribute("data-eng");
+        state.enabled[e] = !state.enabled[e];
+        c.setAttribute("aria-pressed", state.enabled[e] ? "true" : "false");
+        if (state.series) renderCharts();
+      });
+    });
+  }
+  function statTile(v, label) { return '<div class="stat"><b>' + v + "</b><span>" + label + "</span></div>"; }
+  function fmtCompact(n) {
+    if (n == null) return "—";
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "k";
+    return "" + n;
+  }
+
+  // ---------- model list ----------
+  function filteredSortedModels() {
+    var q = state.query.trim().toUpperCase();
+    var list = state.models.filter(function (m) {
+      return !q || m.id.toUpperCase().indexOf(q) !== -1;
+    });
+    var s = state.sort;
+    list.sort(function (a, b) {
+      if (s === "id") return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      if (s === "engines") return (b.n_engines - a.n_engines) || (a.id < b.id ? -1 : 1);
+      if (s === "variables") return (b.n_variables - a.n_variables) || (a.id < b.id ? -1 : 1);
+      return 0;
+    });
+    return list;
+  }
+
+  function renderList() {
+    var list = filteredSortedModels();
+    var frag = document.createDocumentFragment();
+    list.forEach(function (m) {
+      var row = document.createElement("div");
+      row.className = "mrow";
+      row.setAttribute("role", "option");
+      row.setAttribute("tabindex", "0");
+      row.setAttribute("aria-selected", m.id === state.selectedId ? "true" : "false");
+      row.innerHTML =
+        '<span class="mid">' + m.id + "</span>" +
+        '<span class="mbadges">' +
+        '<span class="badge eng" title="engines">' + m.n_engines + "e</span>" +
+        '<span class="badge" title="variables">' + m.n_variables + "v</span>" +
+        "</span>";
+      row.addEventListener("click", function () { selectModel(m.id); });
+      row.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); selectModel(m.id); }
+      });
+      frag.appendChild(row);
+    });
+    el.modellist.innerHTML = "";
+    el.modellist.appendChild(frag);
+    el.listmeta.textContent = list.length + " / " + state.models.length + " models";
+  }
+
+  // ---------- selection + series ----------
+  function selectModel(id) {
+    state.selectedId = id;
+    el.modellist.querySelectorAll(".mrow").forEach(function (r) {
+      r.setAttribute("aria-selected", r.querySelector(".mid").textContent === id ? "true" : "false");
+    });
+    state.varQuery = "";
+
+    var token = ++state.reqToken;
+    if (state.seriesCache[id]) {
+      state.series = state.seriesCache[id];
+      renderModel();
+      return;
+    }
+    showState("loading", "Loading " + id + " …", "Fetching trajectories for every engine.");
+    getJSON(base + "/series/" + id + ".json")
+      .then(function (data) {
+        if (token !== state.reqToken) return; // stale
+        state.seriesCache[id] = data;
+        state.series = data;
+        renderModel();
+      })
+      .catch(function (err) {
+        if (token !== state.reqToken) return;
+        state.series = null;
+        if (err.status === 404) {
+          showState("error", "No series for " + id,
+            "The file <code>series/" + id + ".json</code> returned 404 — its trajectories may not be published yet.");
+        } else {
+          showState("error", "Could not load " + id, escapeHtml(err.message) + " — check the data host and CORS.");
+        }
+      });
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]; }); }
+
+  // group traces by variable
+  function tracesByVariable(series) {
+    var map = {};
+    (series.traces || []).forEach(function (t) {
+      (map[t.variable] || (map[t.variable] = [])).push(t);
+    });
+    return map;
+  }
+
+  function renderModel() {
+    var s = state.series;
+    var idxModel = (state.models || []).filter(function (m) { return m.id === s.id; })[0] || {};
+    var presentEngines = s.engines || [];
+    var missing = state.engines.filter(function (e) { return presentEngines.indexOf(e) === -1; });
+    var jobs = s.jobs || [];
+
+    var head =
+      '<div class="modelhead">' +
+        "<h1>" + s.id + "</h1>" +
+        '<div class="mh-meta">' +
+          "<span><b>" + presentEngines.length + "</b> engines</span>" +
+          "<span><b>" + (s.variables ? s.variables.length : 0) + "</b> variables</span>" +
+          "<span><b>" + jobs.length + "</b> job" + (jobs.length === 1 ? "" : "s") + "</span>" +
+          "<span><b>" + (s.traces ? s.traces.length : 0) + "</b> traces</span>" +
+          (missing.length ? '<span class="miss">missing: ' + missing.join(", ") + "</span>" : "") +
+        "</div>" +
+        '<div class="mh-tools">' +
+          '<div class="varfilter">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
+            '<input id="varsearch" type="text" placeholder="filter variables…" autocomplete="off" spellcheck="false" value="' + escapeHtml(state.varQuery) + '" aria-label="Filter variables">' +
+          "</div>" +
+        "</div>" +
+      "</div>";
+
+    var jobsKey = "";
+    if (jobs.length > 1) {
+      jobsKey = '<div class="jobskey"><span style="color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-size:10px">jobs</span>';
+      jobs.forEach(function (j, i) {
+        jobsKey += '<span class="jk"><span class="jline" style="border-top-style:' +
+          dashToCss(DASHES[i % DASHES.length]) + '"></span>' + escapeHtml(j) + "</span>";
+      });
+      jobsKey += "</div>";
+    }
+
+    el.main.innerHTML = head + jobsKey + '<div class="grid" id="grid"></div>';
+
+    var vs = document.getElementById("varsearch");
+    vs.addEventListener("input", function () {
+      state.varQuery = vs.value;
+      renderCharts();
+      // keep focus + caret
+    });
+
+    renderCharts();
+  }
+
+  function dashToCss(d) { return d.indexOf("dot") !== -1 ? "dotted" : d.indexOf("dash") !== -1 ? "dashed" : "solid"; }
+
+  function themeLayout(varName) {
+    var ink = cssVar("--muted"), grid = cssVar("--grid"), faint = cssVar("--faint");
+    return {
+      margin: { l: 46, r: 10, t: 6, b: 30 },
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      showlegend: false,
+      font: { family: cssVar("--font-mono") || "monospace", size: 10, color: ink },
+      hovermode: "x unified",
+      xaxis: { title: { text: "time", font: { size: 10, color: faint } }, gridcolor: grid, zerolinecolor: grid, linecolor: grid, tickfont: { size: 9 }, automargin: true },
+      yaxis: { gridcolor: grid, zerolinecolor: grid, linecolor: grid, tickfont: { size: 9 }, automargin: true, exponentformat: "e" }
+    };
+  }
+
+  function renderCharts() {
+    var s = state.series;
+    if (!s) return;
+    var grid = document.getElementById("grid");
+    if (!grid) return;
+
+    var byVar = tracesByVariable(s);
+    var vars = (s.variables && s.variables.length ? s.variables.slice() : Object.keys(byVar)).slice();
+    var vq = state.varQuery.trim().toLowerCase();
+    if (vq) vars = vars.filter(function (v) { return v.toLowerCase().indexOf(vq) !== -1; });
+
+    var jobs = s.jobs || [];
+    var jobIndex = {};
+    jobs.forEach(function (j, i) { jobIndex[j] = i; });
+
+    grid.innerHTML = "";
+
+    if (!vars.length) {
+      grid.innerHTML = '<div class="state"><h2>No matching variables</h2><p>Adjust the variable filter.</p></div>';
+      return;
+    }
+
+    var MAX_CHARTS = 60;
+    var capNote = document.getElementById("capnote");
+    if (vars.length > MAX_CHARTS) {
+      if (!capNote) {
+        capNote = document.createElement("div");
+        capNote.id = "capnote";
+        capNote.style.cssText = "grid-column:1/-1;padding:9px 12px;border:1px dashed var(--line-strong);border-radius:9px;background:var(--panel-2);color:var(--muted);font-size:12px";
+        grid.appendChild(capNote);
+      }
+      capNote.innerHTML = "Showing the first <b>" + MAX_CHARTS + "</b> of <b>" + vars.length +
+        "</b> variables. Type in the variable filter above to reach the rest.";
+      vars = vars.slice(0, MAX_CHARTS);
+    }
+
+    var anyDrawn = false;
+    vars.forEach(function (vName) {
+      var traces = (byVar[vName] || []).filter(function (t) { return state.enabled[t.engine]; });
+
+      var card = document.createElement("div");
+      card.className = "card";
+      var enginesHere = [];
+      traces.forEach(function (t) { if (enginesHere.indexOf(t.engine) === -1) enginesHere.push(t.engine); });
+      card.innerHTML =
+        '<div class="card-head"><span class="vname">' + escapeHtml(vName) + "</span>" +
+        '<span class="vsub">' + enginesHere.length + " eng</span></div>" +
+        '<div class="plot"></div>';
+      grid.appendChild(card);
+      var plotDiv = card.querySelector(".plot");
+
+      if (!traces.length) {
+        plotDiv.style.height = "auto";
+        plotDiv.innerHTML = '<div style="padding:26px 12px;text-align:center;color:var(--faint);font-size:12px">no enabled engine for this variable</div>';
+        return;
+      }
+      anyDrawn = true;
+
+      var seenEngine = {};
+      var data = traces
+        .sort(function (a, b) { return ENGINE_ORDER.indexOf(a.engine) - ENGINE_ORDER.indexOf(b.engine); })
+        .map(function (t) {
+          var ji = jobIndex[t.job] || 0;
+          var first = !seenEngine[t.engine];
+          seenEngine[t.engine] = true;
+          return {
+            type: "scatter",
+            mode: "lines",
+            name: t.engine + (jobs.length > 1 ? " · " + t.job : ""),
+            x: t.t, y: t.v,
+            line: { color: engColor(t.engine), width: 1.6, dash: DASHES[ji % DASHES.length] },
+            opacity: 0.92,
+            hovertemplate: t.engine + (jobs.length > 1 ? " (" + t.job + ")" : "") + "<br>t=%{x:.3g}<br>%{y:.4g}<extra></extra>"
+          };
+        });
+
+      Plotly.newPlot(plotDiv, data, themeLayout(vName), {
+        displayModeBar: false, responsive: true, staticPlot: false
+      });
+    });
+
+    if (!anyDrawn) {
+      grid.innerHTML = '<div class="state"><h2>Nothing to draw</h2><p>All engines are toggled off, or none of the enabled engines cover these variables. Re-enable an engine in the header legend.</p></div>';
+    }
+  }
+
+  // re-theme open charts when the color scheme changes
+  function retheme() {
+    // update legend swatch colors (they read CSS vars live, but re-render to be safe)
+    if (state.index) renderHeader();
+    if (state.series) renderCharts();
+  }
+  if (window.matchMedia) {
+    try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", retheme); } catch (e) {}
+  }
+  new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  // ---------- events ----------
+  el.search.addEventListener("input", function () { state.query = el.search.value; renderList(); });
+  el.sortbtns.querySelectorAll(".sortbtn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.sort = b.getAttribute("data-sort");
+      el.sortbtns.querySelectorAll(".sortbtn").forEach(function (x) {
+        x.setAttribute("aria-pressed", x === b ? "true" : "false");
+      });
+      renderList();
+    });
+  });
+
+  // ---------- boot ----------
+  showState("loading", "Loading corpus…", "Fetching the model index from " + escapeHtml(base) + ".");
+  getJSON(base + "/index.json")
+    .then(function (idx) {
+      state.index = idx;
+      state.engines = (idx.engines && idx.engines.length ? idx.engines : ENGINE_ORDER).slice()
+        .sort(function (a, b) { return ENGINE_ORDER.indexOf(a) - ENGINE_ORDER.indexOf(b); });
+      state.engines.forEach(function (e) { state.enabled[e] = true; });
+      state.models = (idx.models || []).slice();
+
+      renderHeader();
+      renderList();
+
+      if (!state.models.length) {
+        showState("error", "Empty index", "index.json loaded but lists no models.");
+        return;
+      }
+      showState("empty", "Pick a model", "Choose a model from the list to overlay every engine's trajectory, one chart per variable.");
+      // auto-select first model so the app opens in a working state
+      selectModel(state.models[0].id);
+    })
+    .catch(function (err) {
+      showState("error", "Could not load the corpus index",
+        "Fetching <code>" + escapeHtml(base) + "/index.json</code> failed: " + escapeHtml(err.message) +
+        ". If you are testing locally, pass <code>?data=&lt;base-url&gt;</code> pointing at a host that serves index.json and series/.");
+      el.stats.innerHTML = "";
+    });
+})();
+</script>
