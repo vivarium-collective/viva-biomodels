@@ -53,27 +53,27 @@ _SIMULATORS: Dict[str, SimulatorSpec] = {
         "process_config": lambda sbml: {"model_source": sbml, "model_format": "sbml"},
         "species_out": "species_concentrations",
     },
-    # AMICI bridges directly to the upstream pbg-amici one-shot Steps (no local
+    # AMICI bridges directly to the upstream viva-amici one-shot Steps (no local
     # adapter) — AmiciUTCStep / AmiciSteadyStateStep already speak the
     # model_source/time/n_points → {result} contract. amici has no binary wheel
-    # (it compiles a C++ extension per model), so pbg-amici is an optional
+    # (it compiles a C++ extension per model), so viva-amici is an optional
     # extra; this engine joins the default "all" set only when it's installed.
     "amici": {
-        "utc_step": "local:pbg_amici.processes.AmiciUTCStep",
-        "steady_state_step": "local:pbg_amici.processes.AmiciSteadyStateStep",
+        "utc_step": "local:viva_amici.processes.AmiciUTCStep",
+        "steady_state_step": "local:viva_amici.processes.AmiciSteadyStateStep",
         "process": "local:AmiciProcess",
         "process_config": lambda sbml: {"sbml_file": sbml},
         "species_out": "states",
     },
-    # PySCeS bridges directly to the upstream pbg-pysces one-shot Steps (no
+    # PySCeS bridges directly to the upstream viva-pysces one-shot Steps (no
     # local adapter) — PyscesUTCStep / PyscesSteadyStateStep already speak the
     # model_source/time/n_points → {result} contract. PySCeS reads its own PSC
     # format, so SBML is converted (via libSBML) and cached on first use; like
-    # amici, pbg-pysces is an optional extra that joins the default "all" set
+    # amici, viva-pysces is an optional extra that joins the default "all" set
     # only when installed.
     "pysces": {
-        "utc_step": "local:pbg_pysces.processes.PyscesUTCStep",
-        "steady_state_step": "local:pbg_pysces.processes.PyscesSteadyStateStep",
+        "utc_step": "local:viva_pysces.processes.PyscesUTCStep",
+        "steady_state_step": "local:viva_pysces.processes.PyscesSteadyStateStep",
         "process": "local:PyscesUTCProcess",
         "process_config": lambda sbml: {"model_source": sbml},
         "species_out": "species_concentrations",
@@ -82,7 +82,7 @@ _SIMULATORS: Dict[str, SimulatorSpec] = {
 
 #: Optional engines: included in the default "all" set only when their wrapper
 #: package is importable. Always explicitly selectable by name regardless.
-_OPTIONAL_BACKENDS: Dict[str, str] = {"amici": "pbg_amici", "pysces": "pbg_pysces"}
+_OPTIONAL_BACKENDS: Dict[str, str] = {"amici": "viva_amici", "pysces": "viva_pysces"}
 
 
 def _simulator_available(name: str) -> bool:
@@ -124,15 +124,15 @@ def resolve_simulators(spec) -> List[str]:
 
 
 # Canonical Process classes, by simulator name → (module, class). Registered
-# explicitly because pbg-simbio is installed editable (hatchling editable
+# explicitly because viva-simbio is installed editable (hatchling editable
 # installs omit top_level.txt, so bigraph-schema's dist-walker can't discover
 # its Edges); registering here keeps `local:<Sim>UTCProcess` resolvable.
 _PROCESS_CLASSES = {
     "copasi": ("pbg_copasi.processes", "CopasiUTCProcess"),
     "tellurium": ("pbg_tellurium.processes", "TelluriumProcess"),
-    "simbio": ("pbg_simbio.processes", "SimbioUTCProcess"),
-    "amici": ("pbg_amici.processes", "AmiciProcess"),
-    "pysces": ("pbg_pysces.processes", "PyscesUTCProcess"),
+    "simbio": ("viva_simbio.processes", "SimbioUTCProcess"),
+    "amici": ("viva_amici.processes", "AmiciProcess"),
+    "pysces": ("viva_pysces.processes", "PyscesUTCProcess"),
 }
 
 

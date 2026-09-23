@@ -6,7 +6,7 @@ under multiple simulators (COPASI, Tellurium, simbio, and optionally
 turning any BioModel into a ready-to-plug process-bigraph module.
 
 > **AMICI** is a 4th comparison engine, wired in via
-> [pbg-amici](https://github.com/vivarium-collective/pbg-amici). It's optional
+> [viva-amici](https://github.com/vivarium-collective/viva-amici). It's optional
 > because AMICI has no binary wheel (it builds from source and compiles a C++
 > extension per model), so it isn't part of the base install. Add it — and it
 > joins the default simulator set — with `pip install -e ".[amici]"`.

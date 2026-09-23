@@ -37,7 +37,7 @@ dependencies = [
     # Simulator wrappers (absorbed from pbg-biomodels-bundle).
     "viva-tellurium",
     "viva-copasi",
-    "pbg-simbio",
+    "viva-simbio",
     # BioModels corpus + SED-ML/SBML parsing (absorbed from pbg-biomodels-bundle).
     "biomodels",
     "rest-process",
@@ -52,12 +52,12 @@ batch = ["pbest"]  # used by run_biomodels CLI / batch tooling
 # (it builds from source + compiles a C++ extension per model), so it must not
 # burden the base install / CI. Install with `pip install -e ".[amici]"` to
 # add it to the default simulator set.
-amici = ["pbg-amici"]
+amici = ["viva-amici"]
 # PySCeS as a comparison engine. Optional like amici: PySCeS reads its own PSC
 # format (SBML is converted via libSBML on first use), and it adds the heavier
 # pysces dependency. Install with `pip install -e ".[pysces]"` to add it to the
 # default simulator set.
-pysces = ["pbg-pysces"]
+pysces = ["viva-pysces"]
 # Scale-out: Ray fan-out runner (ray_runner) + two-tier parquet storage
 # (two_tier / lazy_viewer) for running the full BioModels set. Install with
 # `pip install -e ".[scale]"`.
@@ -71,7 +71,7 @@ pbg-biomodels = "viva_biomodels.cli:main"   # back-compat alias (deprecated)
 # Canonical git source for pbg-basic-processes (not on PyPI). pbg-superpowers and
 # vivarium-workbench each require it transitively but pin it in DIFFERENT forms —
 # vivarium-workbench via a bare dep + its own [tool.uv.sources] (branch="main"),
-# pbg-simbio via a PEP 508 direct reference (... @ git+...@main). uv treats those
+# viva-simbio via a PEP 508 direct reference (... @ git+...@main). uv treats those
 # forms as conflicting URLs and refuses to resolve. Declaring the source here, in
 # the root project, is authoritative: uv unifies every pbg-basic-processes
 # requirement across the graph to this single spec. Keep it matching the upstream
@@ -91,9 +91,9 @@ pbg-basic-processes = { git = "https://github.com/vivarium-collective/pbg-basic-
 vivarium-workbench = { git = "https://github.com/vivarium-collective/vivarium-workbench.git", branch = "main" }
 viva-tellurium = { git = "https://github.com/vivarium-collective/viva-tellurium.git", branch = "main" }
 viva-copasi = { git = "https://github.com/vivarium-collective/viva-copasi.git", branch = "main" }
-pbg-simbio = { git = "https://github.com/vivarium-collective/viva-simbio.git", branch = "main" }
-pbg-amici = { git = "https://github.com/vivarium-collective/viva-amici.git", branch = "main" }
-pbg-pysces = { git = "https://github.com/vivarium-collective/viva-pysces.git", branch = "main" }
+viva-simbio = { git = "https://github.com/vivarium-collective/viva-simbio.git", branch = "main" }
+viva-amici = { git = "https://github.com/vivarium-collective/viva-amici.git", branch = "main" }
+viva-pysces = { git = "https://github.com/vivarium-collective/viva-pysces.git", branch = "main" }
 
 [build-system]
 requires = ["hatchling"]

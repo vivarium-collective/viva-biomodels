@@ -40,15 +40,15 @@ from viva_biomodels.simulators import ALL_SIMULATORS
 def _UTC_CLASS_FOR(simulator_name: str):
     """Return the UTC adapter class for the given simulator.
 
-    amici has no local Biomodels adapter — pbg-amici's AmiciUTCStep already
+    amici has no local Biomodels adapter — viva-amici's AmiciUTCStep already
     speaks the model_source/time/n_points -> {result} contract, so it's used
     directly. Imported lazily because amici is an optional extra.
     """
     if simulator_name == "amici":
-        from pbg_amici.processes import AmiciUTCStep
+        from viva_amici.processes import AmiciUTCStep
         return AmiciUTCStep
     if simulator_name == "pysces":
-        from pbg_pysces.processes import PyscesUTCStep
+        from viva_pysces.processes import PyscesUTCStep
         return PyscesUTCStep
     from viva_biomodels.steps.simulators import (
         BiomodelsCopasiStep,
@@ -65,14 +65,14 @@ def _UTC_CLASS_FOR(simulator_name: str):
 def _SS_CLASS_FOR(simulator_name: str):
     """Return the SteadyState adapter class for the given simulator.
 
-    As with the UTC class, amici resolves directly to pbg-amici's
+    As with the UTC class, amici resolves directly to viva-amici's
     AmiciSteadyStateStep (lazy import — optional extra).
     """
     if simulator_name == "amici":
-        from pbg_amici.processes import AmiciSteadyStateStep
+        from viva_amici.processes import AmiciSteadyStateStep
         return AmiciSteadyStateStep
     if simulator_name == "pysces":
-        from pbg_pysces.processes import PyscesSteadyStateStep
+        from viva_pysces.processes import PyscesSteadyStateStep
         return PyscesSteadyStateStep
     from viva_biomodels.steps.simulators import (
         BiomodelsCopasiSteadyStateStep,
