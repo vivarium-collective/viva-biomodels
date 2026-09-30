@@ -622,16 +622,6 @@
   </div>
 
   
-  <div class="overview-section" id="study-analyses-section">
-    <h3>Analyses to run <span class="muted" style="font-size:0.85em;font-weight:normal">— which of the workspace's <code>ANALYSIS_REGISTRY</code> entries to compute on dispatch</span></h3>
-    <div id="study-analyses-list" data-study="full-corpus-reproduction">
-      <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading analyses…</span></div>
-    </div>
-    <div style="margin-top:8px">
-      <button class="action-btn" type="button" onclick="_saveStudyAnalyses()">Save analyses</button>
-      <span id="study-analyses-status" style="margin-left:8px;font-size:0.9em;color:#555"></span>
-    </div>
-  </div>
 
   
   
@@ -733,6 +723,18 @@
 
 
 <section class="study-tab-panel" data-kind="analyses" id="panel-analyses" hidden>
+
+  
+  <div class="overview-section" id="study-analyses-section">
+    <h3>Analyses to run <span class="muted" style="font-size:0.85em;font-weight:normal">— which of the workspace's <code>ANALYSIS_REGISTRY</code> entries to compute on dispatch</span></h3>
+    <div id="study-analyses-list" data-study="full-corpus-reproduction">
+      <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading analyses…</span></div>
+    </div>
+    <div style="margin-top:8px">
+      <button class="action-btn" type="button" onclick="_saveStudyAnalyses()">Save analyses</button>
+      <span id="study-analyses-status" style="margin-left:8px;font-size:0.9em;color:#555"></span>
+    </div>
+  </div>
 
 <div class="overview-section" id="analyses-results-section">
   <h2>Analyses</h2>
@@ -1071,7 +1073,7 @@
 </section>
 
 </main>
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "74e0ae28d35e1a7b983c5721bd6a80760e619ad0", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/74e0ae28d35e1a7b983c5721bd6a80760e619ad0", "branch": "main", "generated_at": "2026-09-23 23:54 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "74e0ae28d35e1a7b983c5721bd6a80760e619ad0", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/74e0ae28d35e1a7b983c5721bd6a80760e619ad0", "branch": "main", "generated_at": "2026-09-30 00:47 UTC"} };</script>
 <script src="/viva-biomodels/dashboard/assets/data-source.js"></script>
 <script>
 window._studyName = "full-corpus-reproduction";
@@ -1186,6 +1188,7 @@ window._seedFollowupStudy = _seedFollowupStudy;
 window._seedFollowupProposal = _seedFollowupProposal;
 </script>
 <script src="/viva-biomodels/dashboard/assets/configure-run.js"></script>
+<script src="/viva-biomodels/dashboard/assets/perfetto-open.js"></script>
 <script src="/viva-biomodels/dashboard/assets/sim-table.js"></script>
 <!-- composite-card.js: shared composite-card renderer (extracted from
      walkthrough.js, study-spine-reorg Task 6) — the Model tab uses
