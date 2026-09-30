@@ -45,11 +45,11 @@ def _UTC_CLASS_FOR(simulator_name: str):
     directly. Imported lazily because amici is an optional extra.
     """
     if simulator_name == "amici":
-        from viva_amici.processes import AmiciUTCStep
-        return AmiciUTCStep
+        from viva_biomodels.steps.simulators import BiomodelsAmiciStep
+        return BiomodelsAmiciStep
     if simulator_name == "pysces":
-        from viva_pysces.processes import PyscesUTCStep
-        return PyscesUTCStep
+        from viva_biomodels.steps.simulators import BiomodelsPyscesStep
+        return BiomodelsPyscesStep
     from viva_biomodels.steps.simulators import (
         BiomodelsCopasiStep,
         BiomodelsSimbioStep,
