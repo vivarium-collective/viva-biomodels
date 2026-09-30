@@ -13,7 +13,7 @@ dependencies = [
     # 1.7+ still provides `process_bigraph.composite_spec` (used by viva-superpowers).
     "process-bigraph>=1.7.0",
     "bigraph-schema",
-    # Required by pbg-superpowers' readout_resolver / readout_validation /
+    # Required by viva-superpowers' readout_resolver / readout_validation /
     # study_evaluator subpackages (undeclared optional import upstream); without
     # it those generators are silently skipped during dashboard runs.
     "polars",
@@ -68,17 +68,17 @@ viva-biomodels = "viva_biomodels.cli:main"
 pbg-biomodels = "viva_biomodels.cli:main"   # back-compat alias (deprecated)
 
 [tool.uv.sources]
-# Canonical git source for pbg-basic-processes (not on PyPI). pbg-superpowers and
+# Canonical git source for viva-basic-processes (not on PyPI). viva-superpowers and
 # vivarium-workbench each require it transitively but pin it in DIFFERENT forms —
 # vivarium-workbench via a bare dep + its own [tool.uv.sources] (branch="main"),
 # viva-simbio via a PEP 508 direct reference (... @ git+...@main). uv treats those
 # forms as conflicting URLs and refuses to resolve. Declaring the source here, in
-# the root project, is authoritative: uv unifies every pbg-basic-processes
+# the root project, is authoritative: uv unifies every viva-basic-processes
 # requirement across the graph to this single spec. Keep it matching the upstream
 # branch="main" form.
-pbg-basic-processes = { git = "https://github.com/vivarium-collective/pbg-basic-processes.git", branch = "main" }
+viva-basic-processes = { git = "https://github.com/vivarium-collective/viva-basic-processes.git", branch = "main" }
 # These sibling process-packages are not on PyPI. Declare them as GIT sources
-# (like pbg-basic-processes above), NOT local `path = ../…` sources: uv honors a
+# (like viva-basic-processes above), NOT local `path = ../…` sources: uv honors a
 # git-installed package's [tool.uv.sources], so a local path here leaks into every
 # consumer that installs viva-biomodels from git (e.g. viva-human-atlas' publish
 # CI), where the sibling dir doesn't exist and the whole install aborts.
