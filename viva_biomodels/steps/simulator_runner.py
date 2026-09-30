@@ -249,6 +249,11 @@ class SimulatorRunnerStep(Step):
                             "atol":         atol,
                         })
                         leaf = _utc_to_results(payload)
+                        # Complete the engine's species-only leaf with the SED-ML
+                        # report's constant observables (parameters/compartments),
+                        # so it carries the same variable set the reference does.
+                        from viva_biomodels.report_variables import complete_utc_leaf
+                        leaf = complete_utc_leaf(leaf, job.get("constants") or {})
                     elif kind == "steady_state":
                         inner = ss_cls(core=getattr(self, "core", None))
                         payload = inner.update({"model_source": sbml_path})

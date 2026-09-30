@@ -104,6 +104,19 @@ class LoadBiomodelStep(Step):
                 "n_points": None,
             })
 
+        # Attach the SED-ML report's constant observables (global parameters +
+        # compartments with no rule/initial-assignment) to every UTC job, so the
+        # runner can complete each engine's species-only leaf up to the full
+        # reference variable set (closes the dominant repeat-match coverage gap).
+        try:
+            from viva_biomodels.report_variables import constants_for_sbml
+            constants = constants_for_sbml(result.sbml_path, sed_doc)
+        except Exception:  # never let completion metadata break a load
+            constants = {}
+        for j in jobs:
+            if j.get("kind") == "utc":
+                j["constants"] = constants
+
         # Back-compat outputs — populated from the first UTC job if any.
         first_utc = next((j for j in jobs if j["kind"] == "utc"), None)
         legacy_time = float(first_utc["time"]) if first_utc else float(result.utc.duration)
