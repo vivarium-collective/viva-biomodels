@@ -33,7 +33,10 @@ dependencies = [
     # Web-based workspace dashboard (server + templates + assets + lib helpers).
     # Extracted from pbg-template as of v0.5.0; provides the `vivarium-workbench
     # serve` CLI invoked by scripts/serve.sh (import package: vivarium_workbench).
-    "vivarium-workbench",
+    # The [chat] extra adds the built-in VivaChat assistant (local Ollama or a cloud
+    # provider). To drop it, make this a bare "vivarium-workbench" and run `uv lock`
+    # (or revert the commit that added it: it changes only this line and uv.lock).
+    "vivarium-workbench[chat]",
     # Simulator wrappers (absorbed from pbg-biomodels-bundle).
     "viva-tellurium",
     "viva-copasi",
