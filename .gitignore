@@ -34,3 +34,7 @@ datasets/biosimulators_sedml_results
 .pbg/iter1_subset_ref.json
 .pbg/registry-catalog/
 studies/repeat-matching/results/*_timecourse.parquet
+
+# Editor settings (JetBrains). An untracked folder here makes the workbench refuse a remote run
+# ("uncommitted changes"), since a remote run installs the workspace from git.
+.idea/
