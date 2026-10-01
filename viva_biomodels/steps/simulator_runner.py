@@ -28,7 +28,7 @@ from typing import Any, ClassVar, Dict
 from process_bigraph import Step
 
 from viva_biomodels import provenance
-from viva_biomodels.simulators import ALL_SIMULATORS
+from viva_biomodels.simulators import KNOWN_SIMULATORS
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ class SimulatorRunnerStep(Step):
     """Run every SED-ML job of every biomodel under one configured simulator.
 
     Config:
-        simulator_name: one of `ALL_SIMULATORS` (`copasi`, `tellurium`,
+        simulator_name: one of `KNOWN_SIMULATORS` (`copasi`, `tellurium`,
             `simbio`).
 
     Inputs:
@@ -208,10 +208,10 @@ class SimulatorRunnerStep(Step):
 
     def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
         name = self.config["simulator_name"]
-        if name not in ALL_SIMULATORS:
+        if name not in KNOWN_SIMULATORS:
             raise ValueError(
                 f"SimulatorRunnerStep: unknown simulator {name!r}; "
-                f"known: {ALL_SIMULATORS}"
+                f"known: {KNOWN_SIMULATORS}"
             )
 
         # amici and pysces are optional extras: in an environment built without one (a remote container

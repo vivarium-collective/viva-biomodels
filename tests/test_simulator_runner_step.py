@@ -224,6 +224,10 @@ def test_an_engine_that_is_not_installed_is_reported_and_the_run_goes_on(monkeyp
         monkeypatch.delitem(sys.modules, name)
     monkeypatch.setitem(sys.modules, module, None)
     monkeypatch.delitem(sys.modules, "viva_biomodels.steps.simulators", raising=False)
+    # ...and the environment's installed-engine list, computed at import, does not name it (as in a container
+    # built without the extra).
+    import viva_biomodels.simulators as sims
+    monkeypatch.setattr(sims, "ALL_SIMULATORS", [n for n in sims.ALL_SIMULATORS if n != engine])
 
     step = SimulatorRunnerStep(config={"simulator_name": engine}, core=allocate_core())
     out = step.update({"models": {"BIOMD0000000001": {
