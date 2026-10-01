@@ -845,7 +845,7 @@ a.viv-bs-commit:hover { text-decoration: underline; }
           <span class="viv-wsp-dot viv-wsp-ready">●</span>
           <span class="viv-wsp-trigger-names">
             <strong>biomodels</strong>
-            <span class="viv-wsp-trigger-branch" title="branch: study/repeat-matching">study/repeat-matching</span>
+            <span class="viv-wsp-trigger-branch" title="branch: main">main</span>
           </span>
         </span>
         <span class="viv-wsp-trigger-caret" aria-hidden="true">▾</span>
@@ -2092,17 +2092,9 @@ a.viv-bs-commit:hover { text-decoration: underline; }
       <strong>AI Settings</strong>
     </div>
     <div class="vp-form">
-      <label class="vp-field"><span>Provider</span>
-        <select id="viv-ai-provider" class="vp-input">
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="google">Google</option>
-          <option value="ollama">Ollama (local models)</option>
-          <option value="opencode">OpenCode Go</option>
-          <option value="bedrock">AWS Bedrock</option>
-          <option value="openai-compatible">OpenAI-compatible (vLLM, OpenRouter…)</option>
-        </select>
-      </label>
+      <div class="vp-field"><span>Model</span>
+        <button id="viv-ai-model" class="vp-pill vp-select" type="button" aria-haspopup="menu" title="Choose a provider and model"></button>
+      </div>
       <div class="vp-hint" id="viv-ai-status">checking…</div>
       <div id="viv-ai-key-row">
         <label class="vp-field"><span>API key</span>
@@ -2115,9 +2107,6 @@ a.viv-bs-commit:hover { text-decoration: underline; }
         <input id="viv-ai-url" class="vp-input" type="text" placeholder="http://localhost:11434/v1"
                autocomplete="off" spellcheck="false">
       </label>
-      <div class="vp-field"><span>Model</span>
-        <button id="viv-ai-model" class="vp-pill vp-select" type="button" aria-haspopup="menu" title="Choose a model"></button>
-      </div>
       <div class="vp-actions">
         <button id="viv-ai-save" class="vp-btn vp-primary" type="button">Save &amp; test</button>
         <button id="viv-ai-use" class="vp-btn" type="button" hidden>Use this model</button>
@@ -2520,7 +2509,7 @@ Nothing on <code id="pr-base-display-2">main</code> changes until someone presse
      DataSource global that renderers call to fetch narrative data.
      local-server mode (default) fetches from the same-origin /api/* endpoints.
      Hosted mode (sub-projects #2/#3) will set a different config here. -->
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/study/repeat-matching", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "a602146af30d00b00e2f0a461ee87bf34c5213ef", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/a602146af30d00b00e2f0a461ee87bf34c5213ef", "branch": "study/repeat-matching", "generated_at": "2026-10-01 00:51 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "deeb9f8cefd761cdb1516f126943aeada5bbce3f", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/deeb9f8cefd761cdb1516f126943aeada5bbce3f", "branch": "main", "generated_at": "2026-10-01 12:18 UTC"} };</script>
 <!-- Derive the global URL prefix from the (possibly publish-injected) config.
      Many renderers prefix workspace-root-absolute links (/studies/, /api/)
      with window.__BASE_PATH__ so they resolve when the read-only bundle is
