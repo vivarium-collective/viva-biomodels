@@ -47,7 +47,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4"]
-batch = ["pbest"]  # used by run_biomodels CLI / batch tooling
 # AMICI as a 4th comparison engine. Optional because amici has no binary wheel
 # (it builds from source + compiles a C++ extension per model), so it must not
 # burden the base install / CI. Install with `pip install -e ".[amici]"` to
