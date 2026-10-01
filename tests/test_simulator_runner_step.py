@@ -208,3 +208,32 @@ def test_effective_n_points_prefers_reference_grid():
     assert effective_n_points({"n_points": 5}, 1001) == 1001
     # Neither → structural default.
     assert effective_n_points({}, None) == 2
+
+
+@pytest.mark.parametrize("engine,module", [("amici", "viva_amici"), ("pysces", "viva_pysces")])
+def test_an_engine_that_is_not_installed_is_reported_and_the_run_goes_on(monkeypatch, engine, module):
+    """amici and pysces are optional extras. Where one is not installed (an environment built without the extra,
+    e.g. a remote container), its runner records every job as `unavailable` with the reason, instead of raising
+    and failing the whole composite -- so the other engines' results and comparison still come back."""
+    import sys
+
+    from viva_biomodels.steps.simulator_runner import SimulatorRunnerStep
+
+    # A real failed import: Python raises ImportError for a module mapped to None.
+    for name in [m for m in sys.modules if m == module or m.startswith(module + ".")]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(sys.modules, module, None)
+    monkeypatch.delitem(sys.modules, "viva_biomodels.steps.simulators", raising=False)
+
+    step = SimulatorRunnerStep(config={"simulator_name": engine}, core=allocate_core())
+    out = step.update({"models": {"BIOMD0000000001": {
+        "sbml_path": "/tmp/m.xml",
+        "sedml_jobs": [{"name": "utc1", "kind": "utc", "time": 1.0, "n_points": 3},
+                       {"name": "ss", "kind": "steady_state", "time": None, "n_points": None}],
+    }}})
+    runs = out["diagnostics"]["runs"]["BIOMD0000000001"]
+    for job in ("utc1", "ss"):
+        rec = runs[job][engine]
+        assert rec["status"] == "unavailable"
+        assert engine in rec["error"] and f"viva-biomodels[{engine}]" in rec["error"]
+        assert out["results"]["BIOMD0000000001"][job] == {engine: {}}

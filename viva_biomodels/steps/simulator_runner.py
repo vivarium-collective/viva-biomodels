@@ -214,8 +214,18 @@ class SimulatorRunnerStep(Step):
                 f"known: {ALL_SIMULATORS}"
             )
 
-        utc_cls = _UTC_CLASS_FOR(name)
-        ss_cls = _SS_CLASS_FOR(name)
+        # amici and pysces are optional extras: in an environment built without one (a remote container
+        # installs the package's base dependencies only) its adapter cannot be imported. That is this
+        # engine's outcome to report, not a reason to fail the whole composite and the other engines with it.
+        try:
+            utc_cls = _UTC_CLASS_FOR(name)
+            ss_cls = _SS_CLASS_FOR(name)
+            unavailable = ""
+        except ImportError as exc:
+            utc_cls = ss_cls = None
+            unavailable = (f"{name} is not installed in this environment ({exc}); it is the optional "
+                           f"extra viva-biomodels[{name}]")
+            warnings.warn(f"SimulatorRunnerStep[{name}]: {unavailable}", stacklevel=2)
         rtol = self.config.get("rtol")
         atol = self.config.get("atol")
 
@@ -239,7 +249,9 @@ class SimulatorRunnerStep(Step):
                 status, error = "ok", ""
                 t0 = time.perf_counter()
                 try:
-                    if kind == "utc":
+                    if unavailable:
+                        status, error, leaf = "unavailable", unavailable, {}
+                    elif kind == "utc":
                         inner = utc_cls(core=getattr(self, "core", None))
                         payload = inner.update({
                             "model_source": sbml_path,
