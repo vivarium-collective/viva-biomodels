@@ -49,6 +49,7 @@ at_a_glance:
       surfaced through the corpus explorer.
 studies:
   - full-corpus-reproduction
+  - repeat-matching
 acceptance_criteria:
   - study: full-corpus-reproduction
     behavior: corpus-coverage-full

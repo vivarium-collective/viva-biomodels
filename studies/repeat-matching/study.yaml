@@ -1,0 +1,328 @@
+# repeat-matching/study.yaml — schema v4
+#
+# A complete study has 14 sections grouped into 4 layers (executive,
+# framing, validation, implementation+decisions). The required fields
+# (schema_version, name, baseline) are populated below; the rest of the
+# narrative spine is commented out — uncomment + fill the sections that
+# matter as the study matures. See NEXT_STEPS.md and
+# docs/concepts/vivarium-dashboard-model.md for the full pattern.
+#
+# Sections marked ★ are the ones to author FIRST — they render at the top
+# of the study page and let a reviewer land on the study without reading
+# the YAML.
+
+schema_version: 4
+name: repeat-matching
+investigation: corpus-reproduction
+title: Repeat- and reproducibility-matching vs the BioSimulators reference study
+created: '2026-09-30'
+status: planned
+phase: Design
+
+objective: >
+  Run the BioModels corpus under the five live engines (COPASI, Tellurium,
+  simbio, AMICI, PySCeS) plus the BioSimulators SED-ML reference arm, score
+  repeat-match (live X vs reference X) and reproducibility-match (cross-engine)
+  with numpy allclose at the previous study's tolerances, iterate fixes to
+  maximize both, and report every remaining repeat-match failure with analysis.
+
+question: >
+  Do the current cross-simulator BioModels runs reproduce the BioSimulators
+  SED-ML reference results engine-for-engine (repeat matching), and where they
+  diverge, can any previous cross-engine open questions be closed
+  (reproducibility matching)?
+
+hypothesis: >
+  Where an observable is computed at all, the current study reproduces the
+  previous study exactly; the dominant failure mode is coverage (missing SED-ML
+  dataGenerator observables) rather than numerical divergence. Each recovered
+  reproducibility match — especially bringing simbio, the new engine, onto the
+  engines that already agree — is worth 10x a broken repeat match.
+
+# study_type: standard             # critique #10 — exploratory | confirmatory |
+#                                   # diagnostic | adversarial | standard. Default
+#                                   # (unset) = standard; `kind: adversarial` still
+#                                   # works as an alias. Shapes how rigor credits the
+#                                   # study (e.g. an exploratory pass is an observation,
+#                                   # not falsification exposure).
+
+# ─── Executive layer ─────────────────────────────────────────────────
+#
+# runtime:                          # per-study execution overrides
+#   subprocess_timeout_s: 600       # override workspace default
+#   default_emitter: sqlite         # sqlite | xarray
+#   max_generations: 1              # multi-gen runs (workspace owns the loop)
+#
+# report:                          # exec summary panel (top of study page)
+#   # title/objective/main_insight/verdict/key_metrics are DERIVED (read-only
+#   # computed) from canonical fields when absent — only author the optional
+#   # overrides below (caveat / evidence_quality / confidence).
+#   confidence: low                 # high | medium | low
+#   evidence_quality: aspirational  # calibrated | literature-matched | aspirational | regression-only
+#   caveat: ""
+#   # title: ""                     # override; else derived from name/objective
+#   # objective: |                  # override; else aliased to top-level objective
+#   #   (one paragraph: what this study measures)
+#   # main_insight: ""             # override; else derived from findings
+#   # verdict: not-yet-run         # override; else derived from gate_evaluator
+#   # key_metrics: []              # override; else derived from findings/outcomes
+#
+# study_card:                       # one-paragraph dashboard card.
+#   # ALL slots are DERIVED from canonical fields when absent (goal←objective,
+#   # mechanism←biological_summary/findings, expected_result←hypothesis,
+#   # main_expert_question←expert_questions[0], why_before_next←
+#   # pipeline_gate.proceed_condition). Author a slot only to override.
+#   # goal: ""
+#   # mechanism: ""
+#   # why_before_next: ""           # why this study must finish before the next
+#   # expected_result: ""
+#   # main_expert_question: ""      # the one question you most want an expert to answer
+
+# ─── Framing layer ───────────────────────────────────────────────────
+#
+# ★ question: |
+#   (the testable question this study answers)
+#
+# assumptions:
+#   - text: (literature fact the study assumes)
+#     cites: [bib_key]
+#     verified_in_v2ecoli: false
+#
+# pipeline_gate:                      # Section 2 — DAG edges + proceed gate
+#   prerequisites:                    # upstream studies this one depends on
+#     - study: upstream-study-slug
+#       condition: tests-passed       # gate the upstream must satisfy
+#       relation: leads-to            # leads-to (default) | model-input |
+#                                     # evidence | calibrates-threshold |
+#                                     # refutes-alternative
+#       outputs_used: []              # upstream outputs consumed (→ model-input)
+#   enables: []                       # downstream studies unblocked by this one
+#   proceed_condition: ""             # when may the next study start
+#
+# composition_commitment:             # the THEORETICAL commitment this study makes
+#   # Optional but high-value: states what this study ADDS to the prerequisite
+#   # study and what that buys you, so a reviewer reads the compositional claim
+#   # without diffing composites. Renders as a "Theoretical commitment" panel.
+#   component_added: []               # process(es) new vs the prerequisite study
+#   deficit_addressed:                # the gap the new component closes
+#     note: ""                        # free-text: what was missing before
+#     closure_gap_item: []            # gap store(s) this closes (auto-fillable from the meter)
+#   new_behavior: []                  # this study's primary behavior_tests[].name (link to test)
+#   invariants_required:              # earlier guarantees that must still hold (feeds invariant_check)
+#     - study: upstream-study-slug
+#       test: upstream-behavior-test-name
+#   alternatives_excluded: []         # ref to controls[].name / alternative_hypotheses this rules out
+
+# baseline.composite MUST be a REAL, registered composite (resolves in
+# the Composites registry / /api/composites). The dashboard flags an
+# unresolved ref with a 'composite not found in registry' banner. Runs
+# persist via the workspace emitter (runtime.default_emitter: sqlite).
+baseline:
+  - name: batch-compare-biomodels
+    composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
+    params:
+      # Validation subset first (BIOMD1-3); scale to the full corpus once the
+      # harness + iteration-1 fixes are solid. Full corpus (1054 models) is
+      # synced to datasets/biosimulators_sedml_results (gitignored, 2.6GB).
+      biomodel_ids: [BIOMD0000000001, BIOMD0000000002, BIOMD0000000003]
+      simulators: [copasi, tellurium, simbio, amici, pysces]
+      reference_results_dir: datasets/biosimulators_sedml_results
+variants: []
+# observables / readouts → declare in `readouts:` below (v4 prefers `readouts`)
+
+# ★ conditions:                     # v4 alternative to top-level baseline/variants
+#   baseline:
+#     composite: pkg.composites.foo
+#     params: {}
+#   variants:
+#     - name: variant-1
+#       diff_from_baseline: "..."
+#   model_settings:                 # tunable parameter catalog
+#     - name: parameter_name
+#       default: 0
+#       current: 0
+#       range: [0, 1]
+#       units: ""
+#       cites: [bib_key]
+#   expert_inputs: []               # one-off knobs an expert can twist
+#
+# enforced_params:                  # values the study REQUIRES be applied
+#   parameter_name: expected_value
+#   # or:
+#   # params: {parameter_name: expected_value}
+#   # source: "Boesen 2024 PNAS"
+
+# ─── Validation layer ────────────────────────────────────────────────
+#
+# ★ behavior_tests:                 # pass/fail bound to literature targets
+#   - name: kebab-test-name
+#     classification: primary       # primary | supporting | diagnostic | regression
+#     question: ""
+#     measure:
+#       kind: listener_median       # listener_median | listener_sum | bulk_count | ...
+#       path: listeners.x.y         # emission path
+#       window: second_half         # second_half | whole_run | seconds=<N>
+#     pass_if:
+#       op: in_range                # in_range | at_least | at_most | equals | ...
+#       low: 0.0
+#       high: 1.0
+#       provenance:                 # critique #9 — WHERE this threshold came from
+#         kind: literature          # theory | calibration | literature | expert |
+#                                   # exploratory | post_hoc (distinct from `cites`/
+#                                   # `calibration_anchor`, which link a source)
+#         note: ""                  # one line justifying the cutoff
+#     status: pending
+#     cites: [bib_key]
+#
+# ★ readouts:                       # annotations layered onto the emit-plan table
+#   - name: kebab-readout-name
+#     store_path: agents.0.listeners.x.y   # REQUIRED for status: available — must be an emitter leaf
+#     description: ""
+#     units: ""
+#     status: derived-needed        # available | derived-needed | aspirational
+#
+# biological_summary: |
+#   (multi-paragraph plain-English mechanism narrative — the textbook
+#   write-up a non-modeler would read)
+#
+# literature_anchors:               # pair each lit claim to a model observable
+#   - expectation: ""
+#     model_observable: ""
+#     source: ""
+#     status_in_workspace: ""       # Not yet measurable | Available via X | Partial | Verified
+
+# ─── Implementation + decisions layer ────────────────────────────────
+#
+# model_change:                     # declarative inventory of code changes
+#   base_model: pkg.composites.foo
+#   new_processes: []
+#   new_state_variables: []
+#   new_parameters: []
+#   new_listeners: []
+#   modified_processes: []
+#   representational_claims:          # authored rationale the meter can't compute:
+#     # WHY each store is modelled the way it is + which alternatives were
+#     # excluded. Pairs with the computed `model_representation` (inside /
+#     # boundary-crossing / derived / self-produced labels + closure status).
+#     - store: store_name
+#       role: self-produced           # inside | boundary-crossing | derived | self-produced
+#       rationale: ""                 # why this representation (not an alternative)
+#       alternatives_excluded: []     # representations considered and rejected
+#
+# implementation_requirements:      # TODO list
+#   - id: req-1
+#     kind: listener                # listener | process | parameter_hook | data
+#     title: ""
+#     status: planned               # planned | in-progress | done | blocked | done-no-op
+#     effort: S                     # XS | S | M | L | XL
+#     description: ""
+#     steps: []
+#     unblocks: []
+#
+# design_pivot_required:            # named open decisions
+#   - id: STUDY-EQ-01
+#     status: open                  # open | accepted | rejected | superseded-by-<slug>
+#     question: ""
+#     alternatives: []
+#     requested_response: ""
+#
+# conclusion_verdicts:              # three-track verdict.
+#   # Each `result` is DERIVED (read-only badge), NOT authored:
+#   #   biological_validation   ← pipeline_gate.gate_evaluator.result
+#   #   regression_compatibility← all runs completed without error
+#   #   explanatory_gain        ← >=1 finding with tier=='interpretation'
+#   # Author only the `basis` free-text (the *why*).
+#   regression_compatibility:
+#     basis: ""
+#   biological_validation:
+#     basis: ""
+#   explanatory_gain:
+#     basis: ""
+#
+# ─── RIGOR (what a skeptic asks for; the evidence & rigor scorecard reads these).
+#     Fill these before the study is "done". Guide: docs/conventions/rigor-checklist.md
+#
+# robustness:                       # replication: >=3 seeds (stochastic) OR a sweep (deterministic)
+#   n_replicates: 1
+#   seeds: [0]
+#   parameter_sweep: false
+#
+# preregistered:                    # critique #18 — criteria fixed BEFORE the run.
+#   # A confirmatory study earns full credit only when its pass criteria were
+#   # registered (registered_at predates the canonical run). Renders a
+#   # "pre-registered ✓ / post-hoc ⚠" chip in the verdict area.
+#   criteria: []                    # the pass/fail criteria fixed in advance
+#   thresholds:                     # test_name: pass_if (mirrors behavior_tests[].pass_if)
+#     test-name: {op: in_range, low: 0.0, high: 1.0}
+#   predictions: []                 # what you predict the run will show
+#   controls: []                    # controls registered in advance
+#   registered_at: ''               # ISO-8601 timestamp you registered these (author-supplied)
+#
+# controls:                         # a system that SHOULD fail + a passing/borderline case
+#   - name: ""                      # build the negative control with viva_superpowers.intervention
+#     kind: negative                # negative | positive | borderline | adversarial
+#     hypothesis: ""                # why this should (not) qualify
+#     expected: ""
+#     observed: ""
+#     result: PENDING               # PENDING until run; PASS only with a non-empty `observed` (= the control behaved as expected / discriminating)
+#
+# calibration_ladder:               # critique #20 — per metric, index controls[] by rung.
+#   # Each rung is a `controls[].name` (or null when that rung is unbuilt — the gap
+#   # is the signal). >=3 filled rungs = a calibrated metric; known_fail+known_pass
+#   # but no borderline = WARN; <=1 rung = GAP.
+#   - metric: metric_name
+#     known_fail: ""                # control that SHOULD fail (negative)
+#     known_pass: ""                # control that SHOULD pass (positive)
+#     borderline: null              # a near-threshold case (discriminating power)
+#     stress: null                  # an extreme / adversarial case
+#
+# alternative_hypotheses:           # competing explanations + how the evidence excludes them
+#   - claim: ""
+#     hypothesis_id: ""             # critique #6 — optional link to an investigation
+#                                   # hypotheses[].id this study's evidence bears on
+#     discriminated_by: ""          # often the negative control
+#     status: not-excluded          # excluded | not-excluded | untested
+#
+# falsifiability: ""                # what result would overturn the claim
+#
+# limitations:                      # what this result does NOT show
+#   - ""
+#
+# discovery_implications:           # Decide-phase synthesis + next steps
+#   resolved_uncertainties: []
+#   remaining_uncertainties: []
+#   alternate_hypotheses:           # critique #6 — competing explanations (canonical home)
+#     - claim: ""
+#       hypothesis_id: ""           # optional link to an investigation hypotheses[].id
+#       discriminated_by: ""        # often the negative control
+#       status: not-excluded        # excluded | not-excluded | untested
+#   followup_study_proposals:
+#     - id: ""
+#       title: ""
+#       motivation: ""              # give a real motivation, not just a title
+#
+# kind: standard                    # set to `adversarial` for a probe that should NOT qualify
+#
+# findings:                         # each finding: tier + evidence (claim discipline)
+#   - id: F-01
+#     tier: observation             # observation | mechanism | interpretation
+#     mechanism_origin: ""          # engineered | emergent (on interpretation claims)
+#     statement: ""
+#     claim_scope: mechanism        # critique #21 — local-implementation | mechanism |
+#                                   # behavioral | theoretical | generality (DISTINCT
+#                                   # from tier; the scope/reach of the claim)
+#     lifecycle_state: observation  # critique #25 — observation | candidate-explanation |
+#                                   # tested-vs-alternatives | provisional-claim |
+#                                   # generalized | retired | superseded. The derived
+#                                   # FLOOR (study_verdict.lifecycle_floor) is the minimum;
+#                                   # author may declare higher, never below it.
+#     generality:                   # critique #22 — across which axes was this checked?
+#       axes_tested: [parameter_regime]   # parameter_regime | initial_conditions |
+#                                   # discretization | geometry | alt_implementation |
+#                                   # independent_authoring
+#       level: instance_specific    # instance_specific | mechanism | framework
+#     next_action: ""               # free-text rationale: what to do next
+#     next_action_type: ""          # critique #7 — replicate | calibrate | ablate |
+#                                   # adversarially_probe | refine_representation |
+#                                   # split_hypothesis | retire_hypothesis | escalate_model
+#     evidence: {from_test: ""}
