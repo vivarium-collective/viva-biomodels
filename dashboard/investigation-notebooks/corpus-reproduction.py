@@ -182,3 +182,37 @@ STUDY_YAML = str(STUDY_DIR / "study.yaml")
 RUNS_DB = str(STUDY_DIR / "runs.db")
 
 print("No recorded runs for this study; nothing to reproduce.")
+
+# ## Study: Repeat- and reproducibility-matching vs the BioSimulators reference study (`repeat-matching`)
+#
+# **Question.** Do the current cross-simulator BioModels runs reproduce the BioSimulators SED-ML reference results engine-for-engine (repeat matching), and where they diverge, can any previous cross-engine open questions be closed (reproducibility matching)?
+#
+# **Objective.** Run the BioModels corpus under the five live engines (COPASI, Tellurium, simbio, AMICI, PySCeS) plus the BioSimulators SED-ML reference arm, score repeat-match (live X vs reference X) and reproducibility-match (cross-engine) with numpy allclose at the previous study's tolerances, iterate fixes to maximize both, and report every remaining repeat-match failure with analysis.
+#
+# **Hypothesis.** Where an observable is computed at all, the current study reproduces the previous study exactly; the dominant failure mode is coverage (missing SED-ML dataGenerator observables) rather than numerical divergence. Each recovered reproducibility match — especially bringing simbio, the new engine, onto the engines that already agree — is worth 10x a broken repeat match.
+
+# ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `batch-compare-biomodels` | `viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels` | 0 | biomodel_ids=['BIOMD0000000001', 'BIOMD0000000002', 'BIOMD0000000003'], simulators=['copasi', 'tellurium', 'simbio', 'amici', 'pysces'], reference_results_dir=datasets/biosimulators_sedml_results |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels`** — `spec_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels` (a plain, editable dict)
+
+# _composite spec file for `viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels` not found under `viva_biomodels/composites/` — skipped._
+
+# ### Run
+#
+# _Set the runtime (`STEPS`) and step size (`INTERVAL`), then run. Each simulation builds the (edited) spec above and writes `runs.db`; the figures below read it. Set `RERUN = False` to skip re-simulating._
+
+# === Study: repeat-matching ===
+STUDY = 'repeat-matching'
+STUDY_DIR = REPO / 'studies' / STUDY
+STUDY_YAML = str(STUDY_DIR / "study.yaml")
+RUNS_DB = str(STUDY_DIR / "runs.db")
+
+print("No recorded runs for this study; nothing to reproduce.")

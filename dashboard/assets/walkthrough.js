@@ -391,12 +391,16 @@
         var pr = panel.getBoundingClientRect(), fr = frame.getBoundingClientRect();
         chrome = Math.max(0, Math.round(fr.top - pr.top));   // the embed's own header
       }
-      var h = Math.max(minH || 480, Math.round(window.innerHeight - chrome - 24));
+      // a bottom-docked AI panel takes height from the pane (published as --viv-ai-bottom)
+      var aiBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--viv-ai-bottom')) || 0;
+      var h = Math.max(minH || 480, Math.round(window.innerHeight - chrome - 24 - aiBottom));
       frame.style.height = h + 'px';
     };
     fit();
     if (!frame._fitBound) {
       window.addEventListener('resize', fit);
+      window.addEventListener('viv:ai-layout', fit);      // the AI panel docked/undocked/resized
+      window.addEventListener('viv:panel-layout', fit);   // any dockable panel (chat OR code) changed
       frame._fitBound = true;
     }
   }
@@ -764,8 +768,8 @@
     // unavailable in a static bundle → redirect to simulation-setup (composites list).
     if (document.body.classList.contains('snapshot')) {
       // 'github' (Source page) IS available in snapshot now — it's the published
-      // workspace switcher (repo navigator + Sync-to-local). Only 'studies'
-      // (the legacy flat list) redirects to the investigations view.
+      // workspace switcher (repo navigator + Sync-to-local). 'studies' (the legacy
+      // flat list) redirects to the investigations view.
       if (pageId === 'studies') {
         pageId = 'investigations';
       }
@@ -952,7 +956,7 @@
   function _loadInputs() {
     var el = document.getElementById('inputs-api-render');
     if (!el) return;
-    el.innerHTML = '<p class="muted" style="font-style:italic">Loading…</p>';
+    el.innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml('Loading inputs…') : '<p class="muted" style="font-style:italic">Loading inputs…</p>';
     // Prefer the Sources-page picker selection over the git-branch-current slug.
     var _slug = window._inputsSelectedSlug || window._currentIsetSlug || '';
     var _pInputs = window.DataSource
@@ -1513,7 +1517,7 @@
     var dlEl = document.getElementById('ds-preview-download');
     if (titleEl) titleEl.textContent = key;
     if (dlEl) dlEl.setAttribute('href', url);
-    if (bodyEl) bodyEl.textContent = 'Loading…';
+    if (bodyEl) bodyEl.innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml() : 'Loading…';
     openModal('modal-ds-preview');
     fetch(url)
       .then(function(r) {
@@ -5191,7 +5195,7 @@
     if (window._marketLoading) return;
     window._marketLoading = true;
     var host = document.getElementById('market-results');
-    if (host) host.innerHTML = '<p class="empty-state">Loading&hellip;</p>';
+    if (host) host.innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml() : '<p class="empty-state">Loading&hellip;</p>';
     window._marketByType = { composite: [], study: [], investigation: [], process: [] };
     window._marketItems = [];
     var rebuild = function () {
@@ -5924,7 +5928,7 @@
     });
     if (!repos.length) {
       var loaded = (window._marketItems && window._marketItems.length) || (window._marketCatalog && window._marketCatalog.length);
-      return loaded ? '<p class="empty-state">No repositories match.</p>' : '<p class="empty-state">Loading&hellip;</p>';
+      return loaded ? '<p class="empty-state">No repositories match.</p>' : (window.ProgressTrack ? window.ProgressTrack.loadingHtml() : '<p class="empty-state">Loading&hellip;</p>');
     }
     if (zoom === 'list') return _marketRepoTable(repos);
     var render = zoom === 'detail' ? _marketRepoDetail : _marketRepoCard;
@@ -6033,7 +6037,7 @@
     // within-category order (e.g. processes by use). So "All" reads as grouped.
     filtered.sort(function (a, b) { return _MARKET_CAT_ORDER[_marketCatOf(a)] - _MARKET_CAT_ORDER[_marketCatOf(b)]; });
     if (!filtered.length) {
-      host.innerHTML = items.length ? '<p class="empty-state">No matches.</p>' : '<p class="empty-state">Loading&hellip;</p>';
+      host.innerHTML = items.length ? '<p class="empty-state">No matches.</p>' : (window.ProgressTrack ? window.ProgressTrack.loadingHtml() : '<p class="empty-state">Loading&hellip;</p>');
       return;
     }
     var html = '';
@@ -6860,7 +6864,20 @@
     // no duplicate call needed here.
 
     // Populate the Investigations rail section (V4).
-    _vivRefreshInvestigationsRail();
+    var _railReady = _vivRefreshInvestigationsRail();
+
+    // Item 70 phase 3: dismiss the post-switch splash (index.html.j2's
+    // inline body script), if it was shown, the instant the rail's real
+    // fetch resolves — the first real post-reload content, not a fabricated
+    // timer. No-op on a normal load (the splash element never exists).
+    var _splash = document.getElementById('viv-switch-splash');
+    if (_splash) {
+      (function (splash, ready) {
+        var dismiss = function () { if (splash.parentNode) splash.parentNode.removeChild(splash); };
+        if (ready && typeof ready.then === 'function') ready.then(dismiss).catch(dismiss);
+        else dismiss();
+      })(_splash, _railReady);
+    }
 
     // (The GitHub Branches tab has been removed.)
   });
@@ -6950,21 +6967,36 @@
     var railLeft = rail.getBoundingClientRect().left;
     var lastW = _vivRailSavedWidth();
 
+    // mousemove fires far faster than the display refreshes; writing --rail-w on
+    // every event forces a synchronous reflow of the whole rail each time, which on
+    // a workspace with a large study list (e.g. sms-ecoli) makes the drag stutter.
+    // Coalesce to at most ONE style write per animation frame: mousemove only records
+    // the target state (cheap), and rAF applies it. lastW is tracked synchronously so
+    // the saved width on mouse-up is always the latest pointer position.
+    var _raf = 0, _pending = null;
+    function _flush() {
+      _raf = 0;
+      if (!_pending) return;
+      if (_pending.collapsed) { rail.classList.add('viv-rail-collapsed'); }
+      else { rail.classList.remove('viv-rail-collapsed'); _vivRailApplyWidth(rail, _pending.w); }
+    }
     function _move(e) {
       var raw = e.clientX - railLeft;         // desired width: left edge → pointer
       if (raw < _RAIL_COLLAPSE_AT) {          // snap into the collapsed bar look
-        rail.classList.add('viv-rail-collapsed');
-        return;
+        _pending = { collapsed: true };
+      } else {
+        var w = Math.min(_RAIL_MAX, Math.max(_RAIL_MIN, raw));
+        if (Math.abs(w - _RAIL_NORMAL) <= _RAIL_SNAP) w = _RAIL_NORMAL;  // snap to normal
+        lastW = w;
+        _pending = { collapsed: false, w: w };
       }
-      rail.classList.remove('viv-rail-collapsed');
-      var w = Math.min(_RAIL_MAX, Math.max(_RAIL_MIN, raw));
-      if (Math.abs(w - _RAIL_NORMAL) <= _RAIL_SNAP) w = _RAIL_NORMAL;  // snap to normal
-      lastW = w;
-      _vivRailApplyWidth(rail, w);
+      if (!_raf) _raf = requestAnimationFrame(_flush);
     }
     function _up() {
       document.removeEventListener('mousemove', _move);
       document.removeEventListener('mouseup', _up);
+      if (_raf) { cancelAnimationFrame(_raf); _raf = 0; }
+      _flush();                               // apply the final pointer position now
       rail.classList.remove('viv-rail-resizing');
       document.body.classList.remove('viv-rail-resizing-active');
       var collapsed = rail.classList.contains('viv-rail-collapsed');
@@ -7015,7 +7047,10 @@
           : apiFetch('GET', '/api/investigation-summaries').then(function(r) { return r.json(); })
         ).catch(function() { return {investigations: []}; })
       : Promise.resolve({investigations: []});
-    Promise.all([p1, p2]).then(function(arr) {
+    // Returned (item 70 phase 3): this is the first real post-page-load
+    // fetch to settle, so the post-switch splash dismiss hook (below, in the
+    // DOMContentLoaded handler) can wait on it instead of a timer.
+    return Promise.all([p1, p2]).then(function(arr) {
       window._investigations = arr[0].investigations || [];
       window._isetIndex      = arr[1].investigations || [];
       if (hasIsetUI && window._isetIndex.length) {
@@ -7050,10 +7085,15 @@
         }
       }
       if (!match) {
-        host.innerHTML =
-          '<p class="viv-rail-empty" style="font-size:0.85em;color:#9ca3af;padding:4px 12px">' +
-          'Loading study…' +
-          '</p>';
+        if (window.ProgressTrack) {
+          window.ProgressTrack.loading(host, 'Loading study…');
+          host.firstElementChild.classList.add('viv-loading-compact');
+        } else {
+          host.innerHTML =
+            '<p class="viv-rail-empty" style="font-size:0.85em;color:#9ca3af;padding:4px 12px">' +
+            'Loading study…' +
+            '</p>';
+        }
         return;
       }
       var topic = (match.topic && match.topic.trim()) ? match.topic.trim() : 'Ungrouped';
@@ -7576,7 +7616,7 @@
     var ids = Array.from(window._ceCompareSet);
     if (ids.length < 2) return;
     var body = document.getElementById('ce-compare-body');
-    body.innerHTML = '<p class="empty-state">Loading&hellip;</p>';
+    body.innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml() : '<p class="empty-state">Loading&hellip;</p>';
     Promise.all(ids.map(function(id) {
       return apiFetch('GET', '/api/composite-run/' + encodeURIComponent(id))
         .then(function(r) { return r.json(); });
@@ -7922,7 +7962,7 @@
   function _legacyLoadCompositeSvg(ref) {
     var el = document.getElementById('composite-explore-svg-legacy');
     if (!el) return;
-    el.innerHTML = '<p style="color:#888">Loading SVG…</p>';
+    el.innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml('Loading SVG…') : '<p style="color:#888">Loading SVG…</p>';
     apiFetch('GET', '/api/composite-resolve?id=' + encodeURIComponent(ref))
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -8302,7 +8342,10 @@
 
   function _loadInvestigationSets() {
     var list = document.getElementById('investigations-list');
-    if (list) list.innerHTML = '<p class="empty-state">Loading…</p>';
+    if (list) {
+      if (window.ProgressTrack) window.ProgressTrack.loading(list);
+      else list.innerHTML = '<p class="empty-state">Loading…</p>';
+    }
     var _p = window.DataSource
       ? window.DataSource.loadIsetList()
       : fetch('/api/investigation-summaries', {headers: {Accept: 'application/json'}})
@@ -9773,7 +9816,7 @@
     document.getElementById('investigations-list').style.display = 'none';
     document.getElementById('investigation-detail-view').style.display = '';
     document.getElementById('investigation-detail-title').textContent = name;
-    document.getElementById('investigation-detail-description').textContent = 'Loading…';
+    document.getElementById('investigation-detail-description').innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml() : 'Loading…';
 
     // Route through DataSource so snapshot mode reads api/investigation/<name>.json from
     // the static bundle instead of hitting the live /api/investigation/<name> endpoint
@@ -12429,7 +12472,12 @@
     if (!Array.isArray(window._investigations) || !window._investigations.length) {
       // No studies in memory yet → fall back to the legacy render until they arrive.
       if (typeof _renderRailInvestigationsLegacy === 'function') return _renderRailInvestigationsLegacy();
-      host.innerHTML = '<p class="viv-rail-empty" style="font-size:0.85em;color:#9ca3af;padding:4px 12px">Loading…</p>';
+      if (window.ProgressTrack) {
+        window.ProgressTrack.loading(host);
+        host.firstElementChild.classList.add('viv-loading-compact');
+      } else {
+        host.innerHTML = '<p class="viv-rail-empty" style="font-size:0.85em;color:#9ca3af;padding:4px 12px">Loading…</p>';
+      }
       if (typeof _loadInvestigations === 'function') _loadInvestigations();
       return;
     }
@@ -12957,7 +13005,7 @@
     var detail = document.getElementById('investigation-detail');
     if (detail) {
       detail.style.display = '';
-      detail.innerHTML = '<p class="empty-state">Loading…</p>';
+      detail.innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml() : '<p class="empty-state">Loading…</p>';
     }
     // Switch the Investigations page into single-study focus mode: hide the
     // grid + toolbar + chips and let the detail panel take the full width.
@@ -13213,7 +13261,7 @@
       '</div>' +
       '<div class="investigation-detail-panel" data-tab="interventions">' +
         '<div id="inv-interventions-host">' +
-          '<p class="empty-state">Loading interventions…</p>' +
+          (window.ProgressTrack ? window.ProgressTrack.loadingHtml('Loading interventions…') : '<p class="empty-state">Loading interventions…</p>') +
         '</div>' +
       '</div>' +
       '<div class="investigation-detail-panel" data-tab="runs">' +
@@ -16100,7 +16148,7 @@
     _ceStopRunPoll();  // clear any prior interval
     var myToken = ++window._cePollToken;
     var el = document.getElementById('ce-test-results');
-    if (el) el.innerHTML = '<p class="empty-state">Loading run&hellip;</p>';
+    if (el) el.innerHTML = window.ProgressTrack ? window.ProgressTrack.loadingHtml('Loading run…') : '<p class="empty-state">Loading run&hellip;</p>';
 
     function tick() {
       Promise.all([

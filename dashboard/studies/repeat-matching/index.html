@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Study: full-corpus-reproduction</title>
+<title>Study: repeat-matching</title>
 <link rel="stylesheet" href="/viva-biomodels/dashboard/assets/style.css">
 <link rel="stylesheet" href="/viva-biomodels/dashboard/assets/progress-track.css">
 <!-- Inherit the workbench light/dark theme (this page loads in an iframe;
@@ -14,11 +14,11 @@
 <header class="study-header">
   <div style="display:flex; align-items:baseline; gap:12px; justify-content:space-between;">
   <h1 class="study-title">
-    <span class="study-name" id="study-name" data-slug="full-corpus-reproduction" title="full-corpus-reproduction">Full BioModels reproduction across all simulators (1008 models × 5 engines)</span>
+    <span class="study-name" id="study-name" data-slug="repeat-matching" title="repeat-matching">Repeat- and reproducibility-matching vs the BioSimulators reference study</span>
     
     <span class="study-kind-tag study-kind-computational" data-study-kind="computational" title="Study kind">computational</span>
     
-    <span class="phase-pill phase-decide" title="Lifecycle: Design → Build → Simulate → Evaluate → Decide">Decide</span>
+    <span class="phase-pill phase-design" title="Lifecycle: Design → Build → Simulate → Evaluate → Decide">Design</span>
     
   </h1>
   <span class="study-header-actions" style="display:inline-flex; gap:6px; flex-shrink:0;">
@@ -32,11 +32,11 @@
   <div class="study-status-row" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px;">
     
     
-    <span class="status-pill status-complete" title="Headline status derived from the highest-precedence multi-axis field (or legacy `status` as fallback).">complete</span>
+    <span class="status-pill status-planned" title="Headline status derived from the highest-precedence multi-axis field (or legacy `status` as fallback).">planned</span>
     
 
     
-    <div id="readiness-panel" data-slug="full-corpus-reproduction"></div>
+    <div id="readiness-panel" data-slug="repeat-matching"></div>
 
     
     
@@ -150,7 +150,7 @@
 
 
 
-<p id="study-question-headline" class="study-question-headline"><span class="q-glyph">Q</span> Across the entire BioModels corpus, do independent simulators (COPASI, Tellurium, simbio, AMICI, PySCeS) reproduce the same trajectories, and where do they diverge?
+<p id="study-question-headline" class="study-question-headline"><span class="q-glyph">Q</span> Do the current cross-simulator BioModels runs reproduce the BioSimulators SED-ML reference results engine-for-engine (repeat matching), and where they diverge, can any previous cross-engine open questions be closed (reproducibility matching)?
 </p>
 
 <nav class="study-tabs" aria-label="Study sections">
@@ -207,7 +207,7 @@
     </div>
     <div class="act-tabs">
       
-      <button class="study-pillar" data-kind="conclusions" onclick="_setStudyTab('conclusions')">Decide</button>
+      <button class="study-pillar" data-kind="conclusions" onclick="_setStudyTab('conclusions')">Conclusions</button>
     </div>
   </div>
 </nav>
@@ -562,19 +562,19 @@
 
     <div class="ctr-block">
       <h2 class="overview-label ctr-h">Claim</h2>
-      <p class="ctr-text">Running the full BioModels corpus through the batch-compare-biomodels composite under up to five independent ODE engines reproduces 1008 models (14.7M timecourse rows); 306 models are covered by all five engines and 725 by four or more. The complete per-model, per-engine result is committed and browsable model-by-model in the corpus explorer.
+      <p class="ctr-text">Do the current cross-simulator BioModels runs reproduce the BioSimulators SED-ML reference results engine-for-engine (repeat matching), and where they diverge, can any previous cross-engine open questions be closed (reproducibility matching)?
 </p>
       
     </div>
 
     <div class="ctr-block">
       <h2 class="overview-label ctr-h">Test</h2>
-      <p class="ctr-text">Fetch and parse every BioModel, run each through every available simulator via the batch-compare-biomodels composite (fanned out over the corpus with the Ray runner), and record the full per-model, per-engine, per-variable timecourse as a single tidy dataset for cross-engine comparison.
+      <p class="ctr-text">Run the BioModels corpus under the five live engines (COPASI, Tellurium, simbio, AMICI, PySCeS) plus the BioSimulators SED-ML reference arm, score repeat-match (live X vs reference X) and reproducibility-match (cross-engine) with numpy allclose at the previous study&#39;s tolerances, iterate fixes to maximize both, and report every remaining repeat-match failure with analysis.
 </p>
       
       <div class="ctr-meta">
-        <div class="ctr-meta-row"><span class="ctr-meta-k">Model</span> <code>baseline</code></div>
-        <div class="ctr-meta-row"><span class="ctr-meta-k">Measures</span> <span class="ctr-meta-item">corpus-coverage-full</span><span class="ctr-dot">·</span><span class="ctr-meta-item">multi-engine-cross-check</span></div>
+        <div class="ctr-meta-row"><span class="ctr-meta-k">Model</span> <code>batch-compare-biomodels</code></div>
+        
       </div>
       
     </div>
@@ -586,17 +586,6 @@
       
       
       
-      
-      <div class="ctr-meta ctr-assess">
-        
-        <div class="ctr-meta-row"><span class="ctr-meta-k">Confidence</span>
-          <span class="ctr-badge ctr-badge-reported">Reported</span>
-          
-          
-        </div>
-        
-        
-      </div>
       
     </div>
 
@@ -611,12 +600,12 @@
   <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
     <h2 class="overview-label" style="margin:0">Model composition</h2>
     
-    <button type="button" class="btn-mini" onclick="window._vivStudyNotebookFromCard(event, 'full-corpus-reproduction', 'corpus-reproduction')" title="Download a runnable Jupyter notebook for THIS study — its composite + editable parameters + figures">↓ notebook</button>
+    <button type="button" class="btn-mini" onclick="window._vivStudyNotebookFromCard(event, 'repeat-matching', 'corpus-reproduction')" title="Download a runnable Jupyter notebook for THIS study — its composite + editable parameters + figures">↓ notebook</button>
   </div>
 
   
   
-  <div id="model-composite-cards" class="model-composite-cards" data-study="full-corpus-reproduction"
+  <div id="model-composite-cards" class="model-composite-cards" data-study="repeat-matching"
        data-study-config="">
     <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading composite card(s)…</span></div>
   </div>
@@ -637,9 +626,9 @@
   <div class="overview-section" id="model-section">
     <h3>Runnable models <span class="muted" style="font-size:0.85em;font-weight:normal">— the composite(s) this study simulates</span></h3>
     
-    <div class="cond-block" data-model-composite="viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels" data-model-overrides='{"include_steady_state": true, "simulators": ["copasi", "tellurium", "simbio", "amici", "pysces"]}'>
+    <div class="cond-block" data-model-composite="viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels" data-model-overrides='{"biomodel_ids": ["BIOMD0000000001", "BIOMD0000000002", "BIOMD0000000003"], "reference_results_dir": "datasets/biosimulators_sedml_results", "simulators": ["copasi", "tellurium", "simbio", "amici", "pysces"]}'>
       <div class="cond-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <strong>baseline</strong>
+        <strong>batch-compare-biomodels</strong>
         
         <code style="font-size:0.82em;color:#374151;background:#f1f5f9;padding:1px 6px;border-radius:3px">viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels</code>
         <button type="button" class="action-btn" style="font-size:0.8em"
@@ -649,16 +638,16 @@
       
       <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
         
-        <select class="baseline-composite-input" data-baseline-name="baseline"
+        <select class="baseline-composite-input" data-baseline-name="batch-compare-biomodels"
                 data-current="viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels"
                 style="flex:1;min-width:200px;font-family:monospace;font-size:0.82em;padding:3px 6px">
           <option value="viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels" selected>viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels</option>
           
         </select>
         <button type="button" class="action-btn baseline-composite-set" style="font-size:0.8em"
-                data-baseline-name="baseline">Set composite</button>
+                data-baseline-name="batch-compare-biomodels">Set composite</button>
       </div>
-      <div class="baseline-composite-status muted" data-baseline-name="baseline" style="font-size:0.8em;margin-top:2px"></div>
+      <div class="baseline-composite-status muted" data-baseline-name="batch-compare-biomodels" style="font-size:0.8em;margin-top:2px"></div>
       
       
       
@@ -707,7 +696,7 @@
 
   <h4>Latest run preview</h4>
   <p class="muted" style="font-size:0.9em">Per-store sparkline + first/last/min/max from the most recent run's emitted trajectory. This is a downsampled PREVIEW, not the full data — use the per-store or Download-all links for the complete arrays.</p>
-  <div id="results-preview" data-study="full-corpus-reproduction">
+  <div id="results-preview" data-study="repeat-matching">
     <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading results preview…</span></div>
   </div>
 
@@ -727,7 +716,7 @@
   
   <div class="overview-section" id="study-analyses-section">
     <h3>Analyses to run <span class="muted" style="font-size:0.85em;font-weight:normal">— which of the workspace's <code>ANALYSIS_REGISTRY</code> entries to compute on dispatch</span></h3>
-    <div id="study-analyses-list" data-study="full-corpus-reproduction">
+    <div id="study-analyses-list" data-study="repeat-matching">
       <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading analyses…</span></div>
     </div>
     <div style="margin-top:8px">
@@ -743,9 +732,9 @@
   <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
     <span class="muted" style="margin-right:auto;font-weight:600">Analysis result files</span>
     <a id="data-download-all" class="btn-mini" style="display:none"
-       href="/api/study-analysis-zip?study=full-corpus-reproduction">Download all (.zip)</a>
+       href="/api/study-analysis-zip?study=repeat-matching">Download all (.zip)</a>
   </div>
-  <div id="data-files" data-study="full-corpus-reproduction">
+  <div id="data-files" data-study="repeat-matching">
     <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading result files…</span></div>
   </div>
 </div>
@@ -766,7 +755,7 @@
     interval/buffer, output location, and emit scope — from
     <code>lib/emitters.py</code> and this study's (or the workspace's)
     <code>runtime.default_emitter</code>.</p>
-    <div id="readouts-emitter" data-study="full-corpus-reproduction">
+    <div id="readouts-emitter" data-study="repeat-matching">
       <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading emitter configuration…</span></div>
     </div>
 
@@ -778,7 +767,7 @@
     
     <div id="readouts-download" style="margin:0 0 16px 0"></div>
 
-    <div id="readouts-table" data-study="full-corpus-reproduction">
+    <div id="readouts-table" data-study="repeat-matching">
       <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading readouts from the composite emit plan…</span></div>
     </div>
 
@@ -786,19 +775,10 @@
     <p class="muted" style="font-size:0.9em">Store path, dtype, shape
     <code>(n_steps, …)</code>, units, and a best-effort byte estimate for each emitted
     leaf.</p>
-    <div id="readouts-shapes" data-study="full-corpus-reproduction">
+    <div id="readouts-shapes" data-study="repeat-matching">
       <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading output shapes…</span></div>
     </div>
 
-    
-    <details style="margin-top: 1.4em;">
-      <summary class="muted">How observables tie to Expected Behavior</summary>
-      <p style="font-size: 0.9em;">Observables can be referenced by name in an
-      <code>expected_behavior[i].measure</code> block (e.g. <code>kind: bulk_count, id:
-      "MONOMER0-160[c]"</code>). When the dashboard validates a study, it cross-checks
-      that every <code>measure</code> resolves to a declared observable, or to a
-      built-in helper.</p>
-    </details>
     
   </div>
 </section>
@@ -861,68 +841,11 @@
   
   
   
-  <ul class="expected-behavior-list" id="tests-list" style="list-style:none; padding-left:0; margin-top: 12px;">
-    
-    
-    
-    
-    
-    
-    
-    
-    <li class="expected-behavior-item" id="bt-corpus-coverage-full"
-        data-test-kind="behavioral"
-        
-        data-pytest-node="corpus-coverage-full"
-        data-classification="unclassified"
-        data-result="pending"
-        style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #cbd5e1; background: #f8fafc; border-radius: 4px;">
-      
-        
-      <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
-        <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #f1f5f9; color: #475569">⏳ pending</span>
-        <span class="classification-pill classification-unclassified">unclassified</span>
-        <strong style="font-size: 0.9em;">corpus-coverage-full</strong>
-        
-      </div>
-      <div style="margin-top: 6px; font-size: 0.95em;"></div>
-      
-      
-      
-      
-      
-    </li>
-    
-    
-    
-    
-    
-    
-    
-    
-    <li class="expected-behavior-item" id="bt-multi-engine-cross-check"
-        data-test-kind="behavioral"
-        
-        data-pytest-node="multi-engine-cross-check"
-        data-classification="unclassified"
-        data-result="pending"
-        style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #cbd5e1; background: #f8fafc; border-radius: 4px;">
-      
-        
-      <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
-        <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #f1f5f9; color: #475569">⏳ pending</span>
-        <span class="classification-pill classification-unclassified">unclassified</span>
-        <strong style="font-size: 0.9em;">multi-engine-cross-check</strong>
-        
-      </div>
-      <div style="margin-top: 6px; font-size: 0.95em;"></div>
-      
-      
-      
-      
-      
-    </li>
-    
+  <ul class="tests-list" id="tests-list" style="margin-top: 12px;">
+    <li class="placeholder">No <code>expected_behavior:</code> entries declared in study.yaml yet.
+      Add some to see them appear here as test rows. Click "Run tests" to discover and
+      execute additional <code>studies/&lt;slug&gt;/tests/test_*.py</code> files alongside
+      the auto-generated assertions.</li>
   </ul>
   
   </div>
@@ -1028,12 +951,6 @@
     </div>
 
     
-    
-    
-
-    
-    
-    
 
   </div>
 
@@ -1045,8 +962,22 @@
 
     
     
-    
-    
+    <p class="muted" style="margin:0 0 10px 0;font-size:0.85em">
+      Synthesised read-only from canonical fields — edit <code>findings</code>,
+      <code>limitations</code>, and <code>discovery_implications</code> to change
+      this (and the generated report) together.
+    </p>
+    <div class="conclusions-grid conclusions-synthesis">
+      <div class="conclusion-field">
+        <h3>Claims <span class="muted small">(from findings)</span></h3>
+        <p class="muted">No findings recorded yet.</p>
+      </div>
+      <div class="conclusion-field">
+        <h3>Evidence <span class="muted small">(from findings)</span></h3>
+        
+        <p class="muted">No evidence recorded on findings yet.</p>
+      </div>
+    </div>
     
 
   </div>
@@ -1061,13 +992,24 @@
     
 
     
-    
-    
-    
 
   </div>
 
   
+  
+  <details class="overview-section"><summary class="overview-label">Limitations &amp; provenance</summary>
+
+    
+    
+    
+    <div class="conclusions-grid conclusions-synthesis">
+      <div class="conclusion-field">
+        <h3>Next steps <span class="muted small">(from discovery implications)</span></h3>
+        <p class="muted">No follow-up proposals recorded yet.</p>
+      </div>
+    </div>
+
+  </details>
   
 
 </section>
@@ -1076,7 +1018,7 @@
 <script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/study/repeat-matching", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "a602146af30d00b00e2f0a461ee87bf34c5213ef", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/a602146af30d00b00e2f0a461ee87bf34c5213ef", "branch": "study/repeat-matching", "generated_at": "2026-10-01 00:51 UTC"} };</script>
 <script src="/viva-biomodels/dashboard/assets/data-source.js"></script>
 <script>
-window._studyName = "full-corpus-reproduction";
+window._studyName = "repeat-matching";
 window._study = null;  // populated by _bootstrapStudy() in study-detail.js
 
 // Save handler for the Conditions → Model settings editable rows.
