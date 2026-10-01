@@ -97,6 +97,10 @@ def _simulator_available(name: str) -> bool:
 #: (every always-on engine plus any installed optional engine).
 ALL_SIMULATORS: List[str] = [n for n in _SIMULATORS if _simulator_available(n)]
 
+#: Every simulator name this package knows, installed or not (an optional engine missing from this
+#: environment is still a valid request -- its runner reports it unavailable).
+KNOWN_SIMULATORS: List[str] = list(_SIMULATORS)
+
 
 def resolve_simulators(spec) -> List[str]:
     """Normalize a simulator selection to a validated list of names.
