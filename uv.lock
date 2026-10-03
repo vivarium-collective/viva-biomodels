@@ -4558,7 +4558,7 @@ dependencies = [
 [[package]]
 name = "vivarium-workbench"
 version = "0.4.0"
-source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#7fd0d1531946fd5127df88d8ea5b68b88ef9a1d9" }
+source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#11e7c678630458fd2e3d04f19c50fe8a060e442b" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "boto3" },
