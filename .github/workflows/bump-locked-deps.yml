@@ -1,0 +1,72 @@
+name: bump-locked-deps
+
+# pyproject.toml tracks several sibling packages by `branch = "main"`, but
+# uv.lock freezes each at one exact commit and `uv run` obeys the lock — so a
+# merge to any of those repos does not reach `uv run` users until the lock is
+# bumped. This opens that bump as a PR (uv.lock only), daily and on demand.
+# Merging stays a human call: the PR runs the normal `test` check first.
+#
+# Checks on the bump PR: GitHub does not start workflows for PRs opened with the
+# built-in GITHUB_TOKEN. To have `test` start automatically, add a repository
+# secret BUMP_PR_TOKEN (a fine-grained PAT or GitHub App token with
+# contents + pull-requests write on this repo). Without it the PR opens fine;
+# close and reopen it once to start the checks.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bump-locked-deps
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Upgrade every branch-tracked git package in uv.lock
+        # The list comes from uv.lock itself, so transitive git packages
+        # (e.g. viva-superpowers) and any new branch= source are covered
+        # without editing this file.
+        run: |
+          args=$(uv run --no-project python - <<'PY'
+          import tomllib
+          with open("uv.lock", "rb") as f:
+              packages = tomllib.load(f)["package"]
+          print(" ".join(
+              f"--upgrade-package {p['name']}"
+              for p in packages
+              if "branch=" in p["source"].get("git", "")
+          ))
+          PY
+          )
+          echo "uv lock $args"
+          uv lock $args
+
+      - name: Open or update the bump PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.BUMP_PR_TOKEN || secrets.GITHUB_TOKEN }}
+          add-paths: uv.lock
+          branch: bump/locked-deps
+          delete-branch: true
+          sign-commits: true
+          commit-message: "build: bump locked branch=main dependencies"
+          title: "build: bump locked branch=main dependencies"
+          body: |
+            Automated, lock-only (`uv.lock`) bump of every `branch = "main"` source in
+            `pyproject.toml` to its current `main` commit, by `.github/workflows/bump-locked-deps.yml`.
+
+            If no checks appear below, GitHub did not start them for a PR opened by the
+            built-in token: close and reopen this PR once (or add a `BUMP_PR_TOKEN` secret).
+            The `test` check must pass before merging.
