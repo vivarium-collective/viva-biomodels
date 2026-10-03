@@ -1,16 +1,16 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
-    "python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux'",
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "(python_full_version >= '3.14' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version == '3.13.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
     "(python_full_version == '3.13.*' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
+    "python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux'",
     "python_full_version < '3.13' and sys_platform == 'win32'",
     "python_full_version < '3.13' and sys_platform == 'emscripten'",
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
@@ -4440,12 +4440,12 @@ provides-extras = ["dev", "amici", "pysces", "scale"]
 [[package]]
 name = "viva-catalog"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-marketplace.git?branch=main#22711e885501a89d3a9f303cf132ae9d55acdfa3" }
+source = { git = "https://github.com/vivarium-collective/viva-marketplace.git?branch=main#f338d6663f343d65cdd655a5174a2cbe79b00797" }
 
 [[package]]
 name = "viva-copasi"
-version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-copasi.git?branch=main#ea9aca7ec959232f9831e623111ff68f9771a1a9" }
+version = "0.1.1"
+source = { git = "https://github.com/vivarium-collective/viva-copasi.git?branch=main#631c7346b7da3cd645c20684a6fbd08c81024f33" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "copasi-basico" },
@@ -4515,10 +4515,11 @@ dependencies = [
 [[package]]
 name = "viva-superpowers"
 version = "0.23.0"
-source = { git = "https://github.com/vivarium-collective/viva-superpowers.git?branch=main#6c0bf0401918bdd4905b1ca3ed0d019c0d3336b9" }
+source = { git = "https://github.com/vivarium-collective/viva-superpowers.git?branch=main#dcec4c69c301e07acfd383d7fbfb08f5ca20e840" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "click" },
+    { name = "filelock" },
     { name = "jinja2" },
     { name = "jsonschema", extra = ["format-nongpl"] },
     { name = "process-bigraph" },
@@ -4536,8 +4537,8 @@ evaluator = [
 
 [[package]]
 name = "viva-tellurium"
-version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main#af44a3c31252d56c5c809d7174b99388eb06e6c6" }
+version = "0.1.1"
+source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main#59772834791a173130b3e8d08f39e6614b3c5007" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "numpy" },
