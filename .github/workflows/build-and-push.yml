@@ -79,7 +79,15 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          # amd64-only (intentional deviation from the multi-arch template
+          # default). This workspace's comparison engines pull `tellurium`,
+          # which depends unconditionally on `libroadrunner`. libroadrunner
+          # publishes NO linux/arm64 (manylinux aarch64) wheel for Python 3.13
+          # and no sdist, so `uv sync` on the linux/arm64 build leg fails at
+          # install time with no compatible distribution. The stack is x86_64
+          # only, so we build x86_64 only. Re-add linux/arm64 if/when
+          # libroadrunner ships aarch64 wheels for the pinned Python.
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
