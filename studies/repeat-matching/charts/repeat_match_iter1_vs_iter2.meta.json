@@ -1,0 +1,6 @@
+{
+  "title": "Repeat matching vs the BioSimulators reference (3-model validation subset)",
+  "caption": "Per (engine, model) repeat arm: green = observables matched to the BioSimulators reference under numpy allclose; grey = reference observables; red -N = reference observables not yet computed (coverage gap).",
+  "interpretation": "Iteration 1 left 17/48 (BIOMD1-2) and 7-9 (BIOMD3) reference observables uncomputed. Iteration 2 ('full observable coverage') closed the gap: BIOMD1/BIOMD2 reach 65/65, BIOMD3 14/14 computed with 2 reference observables still unsupported. Where an observable is computed, 12/12 repeat arms matched exactly — the dominant failure mode is coverage, not numerical divergence.",
+  "source": "studies/repeat-matching/results/iter1_subset_match_summary.parquet, studies/repeat-matching/results/iter2_subset_match_summary.parquet"
+}

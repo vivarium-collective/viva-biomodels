@@ -1,0 +1,6 @@
+{
+  "title": "BioModels corpus reproduction — coverage across five ODE engines",
+  "caption": "Left: how many of the 1008 reproduced models are covered by 5/4/3/2/1 engines. Right: per-engine corpus coverage (models each engine successfully simulated).",
+  "interpretation": "1008 models reproduced; 306 covered by all five engines and 725 by four or more. Per-engine: tellurium 985, amici 879, copasi 870, pysces 770, simbio 367. This chart reports COVERAGE — how broadly each model was cross-run — not scored trajectory agreement (agreement is measured in the repeat-matching study).",
+  "source": "datasets/corpus_all_engines/index.json"
+}
