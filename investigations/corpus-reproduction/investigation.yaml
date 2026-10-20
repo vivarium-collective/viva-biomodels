@@ -22,20 +22,31 @@ executive:
     per-model, per-engine, per-variable timecourse (14.7M rows) is the result;
     the corpus explorer (Analyses tab) browses it model-by-model.
   verdict: >
-    Reproduced at corpus scale. 1008 models ran; 306 have all five engines and
-    725 have four or more, giving a broad, engine-independent cross-check of the
-    BioModels corpus. Per-model agreement is inspectable in the corpus explorer.
+    Reproduced at corpus scale, with agreement validated on a subset. COVERAGE:
+    1008 models ran; 306 have all five engines and 725 have four or more — a
+    broad, engine-independent cross-run of the BioModels corpus (full-corpus
+    study). AGREEMENT: on the BIOMD1-3 validation subset, every live engine
+    reproduces the BioSimulators reference exactly wherever an observable is
+    computed, and the residual failures are observable-coverage, not numerical
+    divergence (repeat-matching study). Corpus-wide scored agreement is not yet
+    quantified; per-model agreement is inspectable in the corpus explorer.
 scientific_argument:
   main_claim: >
     A standards-based multi-simulator reproduction of the BioModels corpus is
-    feasible and repeatable: the same SBML/SED-ML models, run under five
-    independent engines, agree for the large majority of models, and the
-    exceptions are localized and inspectable.
+    feasible and repeatable. Coverage is demonstrated corpus-wide (1008 models,
+    up to five engines); exact cross-engine/reference agreement is demonstrated
+    on a validation subset, where the only residual is missing SED-ML
+    observables, not divergent trajectories. The corpus-wide agreement claim is
+    therefore scoped: supported by the subset result plus per-model
+    explorability, pending a corpus-wide scored run.
   evidence_for:
     - 1008 models simulated across up to five engines (14.7M timecourse rows);
       committed as a single tidy parquet with a compact per-model index.
     - 306 models cover all five engines and 725 cover four or more — a genuine
       cross-engine reproduction, not a two-engine spot check.
+    - On BIOMD1-3, all 12 repeat arms match the BioSimulators reference exactly
+      (numpy allclose) where observables are computed; residuals are coverage
+      (iter1 17/48 missing → iter2 0 on BIOMD1-2, 2 on BIOMD3), not numerics.
     - The corpus explorer overlays every engine per variable for any model, so
       agreement and divergence are directly visible.
 biological_story: >
@@ -45,8 +56,13 @@ biological_story: >
 at_a_glance:
   - study: full-corpus-reproduction
     role: >
-      The full corpus sweep — every BioModel across every available simulator,
-      surfaced through the corpus explorer.
+      The full corpus sweep — every BioModel across every available simulator —
+      establishing corpus-scale COVERAGE, surfaced through the corpus explorer.
+  - study: repeat-matching
+    role: >
+      The agreement check — live engines vs the BioSimulators SED-ML reference
+      on the BIOMD1-3 validation subset — showing residuals are observable
+      coverage, not numerical divergence.
 studies:
   - full-corpus-reproduction
   - repeat-matching
@@ -55,4 +71,31 @@ acceptance_criteria:
     behavior: corpus-coverage-full
   - study: full-corpus-reproduction
     behavior: multi-engine-cross-check
+  - study: repeat-matching
+    behavior: repeat-match-exact
+  - study: repeat-matching
+    behavior: reproducibility-exact
+# A corpus REPRODUCTION has no natural adversarial/ablation member: the failure
+# signal is cross-engine disagreement itself, surfaced per-model by the corpus
+# explorer and scored by repeat-matching. Opting out of the adversarial-coverage
+# requirement with a reason rather than inventing a synthetic negative control.
+adversarial_coverage_skip: true
+adversarial_coverage_skip_reason: >
+  Reproduction study: the discriminating signal is engine disagreement (surfaced
+  per-model in the explorer and scored by repeat-matching), not a system built to
+  fail a gate. pysces 2/65 on BIOMD1 and simbio's reduced observable set are the
+  natural "should differ" cases and are reported, not hidden.
+decisions_needed:
+  - id: DN-01
+    question: >
+      Run the repeat-/reproducibility-match scorer across the FULL corpus against
+      the BioSimulators reference to replace per-model explorability with a
+      corpus-wide agreement statistic? (Reference set is ~2.6 GB, gitignored.)
+    status: open
+  - id: DN-02
+    question: >
+      Close the residual coverage gaps — 2 unsupported SED-ML dataGenerators on
+      BIOMD3, and simbio's reduced 48-observable export — or accept them as
+      documented limitations?
+    status: open
 expert_docs: []

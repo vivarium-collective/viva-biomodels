@@ -3,15 +3,26 @@ name: full-corpus-reproduction
 investigation: corpus-reproduction
 title: 'Full BioModels reproduction across all simulators (1008 models × 5 engines)'
 created: '2026-09-22'
-status: complete
+# Status (six-axis canonical)
 phase: Decide
-confidence: Reported
+design_status: designed
+implementation_status: implemented
+simulation_status: ran
+evaluation_status: evaluated
+gate_status: passed
+expert_review_status: not_reviewed
+status: complete            # legacy back-compat; multi-axis above takes precedence
+confidence: Accepted        # matches the derived value (passed gate / evaluated)
 claim: >
   Running the full BioModels corpus through the batch-compare-biomodels
   composite under up to five independent ODE engines reproduces 1008 models
-  (14.7M timecourse rows); 306 models are covered by all five engines and 725
-  by four or more. The complete per-model, per-engine result is committed and
-  browsable model-by-model in the corpus explorer.
+  (14.7M timecourse rows) at corpus scale: 306 models are covered by all five
+  engines and 725 by four or more. This study establishes COVERAGE — how broadly
+  each model is cross-run and that the per-model, per-engine trajectories are
+  committed and browsable model-by-model in the corpus explorer. Scored
+  trajectory AGREEMENT against the BioSimulators reference is measured in the
+  sibling repeat-matching study (currently on the BIOMD1-3 validation subset),
+  not quantified corpus-wide here.
 question: >
   Across the entire BioModels corpus, do independent simulators (COPASI,
   Tellurium, simbio, AMICI, PySCeS) reproduce the same trajectories, and where
@@ -35,6 +46,27 @@ description: >
   datasets/corpus_all_engines/ (a sorted tidy parquet + a compact per-model
   index.json) and served to the corpus explorer (Analyses tab) as one JSON per
   model for lazy, model-by-model browsing.
+# What the study measures — anchors for the test rows.
+readouts:
+  - n_models — BioModels reproduced across at least one engine (=1008)
+  - n_models_ge_4_engines — models covered by four or more engines (=725)
+  - n_models_5_engines — models covered by all five engines (=306)
+  - per_engine_coverage — models each engine simulated (tellurium 985, amici 879, copasi 870, pysces 770, simbio 367)
+
+# ─── Conditions (Build tab) ──────────────────────────────────────────
+conditions:
+  baseline:
+    composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
+    params:
+      simulators: [copasi, tellurium, simbio, amici, pysces]
+      include_steady_state: true
+  variants:
+    - name: full-corpus-sweep
+      diff_from_baseline: >
+        Fan the per-model baseline composite over every BioModel id
+        (biomodels.get_all_identifiers()) via the Ray runner; the committed
+        dataset is the union of all per-model results.
+
 baseline:
   - name: baseline
     composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
@@ -50,7 +82,11 @@ baseline:
       Per-model multi-engine comparison. The full run fans this composite over
       every BioModel id (biomodels.get_all_identifiers()) via the Ray runner;
       the committed dataset is the union of all per-model results.
-variants: []
+variants:
+  - name: full-corpus-sweep
+    description: >
+      The corpus-wide fan-out over all BioModel ids via the Ray runner — the
+      canonical run scored in this study.
 interventions: []
 expected_behavior:
   - name: corpus-coverage-full
@@ -82,3 +118,135 @@ canonical_runs:
     n_models: 1008
     n_rows: 14659367
     engines: [amici, copasi, pysces, simbio, tellurium]
+    n_models_5_engines: 306
+    n_models_ge_4_engines: 725
+
+runs:
+  - name: full-corpus
+    emitter: parquet
+    outcomes:
+      corpus-coverage-full: pass
+      multi-engine-cross-check: pass
+
+# ─── Findings ────────────────────────────────────────────────────────
+findings:
+  - id: F-01
+    tier: observation
+    statement: >
+      Corpus-scale reproduction is feasible and repeatable: 1008 BioModels were
+      fetched, parsed and simulated under up to five independent ODE engines
+      (14.7M timecourse rows), committed as one tidy parquet + per-model index.
+    claim_scope: generality
+    generality:
+      axes_tested: [alt_implementation]
+      level: framework
+    next_action: Quantify scored agreement corpus-wide (see repeat-matching).
+    next_action_type: escalate_model
+    provenance:
+      run_ids: [full-corpus]
+    evidence:
+      from_test: corpus-coverage-full
+  - id: F-02
+    tier: observation
+    statement: >
+      Coverage is broad, not a two-engine spot check: 306 models carry all five
+      engines and 725 carry four or more. Per-engine reach is uneven — tellurium
+      985, amici 879, copasi 870, pysces 770, simbio 367 — so simbio is the
+      coverage-limiting engine, not a correctness-limiting one.
+    claim_scope: behavioral
+    generality:
+      axes_tested: [alt_implementation]
+      level: instance_specific
+    next_action: >
+      Investigate why simbio covers fewer models (parse/feature gaps) to raise
+      five-engine coverage above 306.
+    next_action_type: refine_representation
+    provenance:
+      run_ids: [full-corpus]
+    evidence:
+      from_test: multi-engine-cross-check
+  - id: F-03
+    tier: interpretation
+    mechanism_origin: emergent
+    statement: >
+      This study measures COVERAGE, not scored trajectory agreement. Whether the
+      overlapping engines actually agree per-model is inspectable in the corpus
+      explorer and quantified on the BIOMD1-3 subset by the repeat-matching
+      study (exact agreement where observables are computed). The corpus-wide
+      agreement claim is therefore scoped — supported by the subset result plus
+      per-model explorability, not yet a corpus-wide scored number.
+    claim_scope: theoretical
+    generality:
+      axes_tested: [alt_implementation]
+      level: mechanism
+    next_action: >
+      Run the repeat-/reproducibility-match scorer across the full corpus
+      against the BioSimulators reference to replace explorability with a
+      corpus-wide agreement statistic.
+    next_action_type: escalate_model
+    provenance:
+      run_ids: [full-corpus]
+    evidence:
+      from_test: multi-engine-cross-check
+
+# ─── Verdict ─────────────────────────────────────────────────────────
+conclusion_verdicts:
+  regression_compatibility:
+    basis: >
+      The Ray fan-out completed corpus-wide (crash-isolated per model); the
+      committed parquet + index are the reproducible artifact.
+  biological_validation:
+    basis: >
+      Both coverage gates pass (n_models >= 1000; n_models_ge_4_engines >= 700).
+      These certify corpus-scale coverage; scored agreement is the sibling
+      study's gate, not this one's.
+  explanatory_gain:
+    basis: >
+      F-03 draws the line between coverage (established here) and scored
+      agreement (repeat-matching), preventing the common overclaim that broad
+      coverage equals demonstrated cross-engine agreement.
+
+conclusion_logic:
+  if_primary_tests_pass: >
+    Corpus-scale coverage is established — 1008 models reproduced under up to
+    five engines, 725 with four or more — and committed as a reusable dataset
+    plus a per-model explorer. Proceed to quantify scored cross-engine agreement
+    corpus-wide via the repeat-matching harness.
+  if_primary_tests_fail: >
+    Coverage below the corpus threshold would mean the fetch/parse/simulate
+    pipeline is dropping models; triage the Ray failures per model before making
+    any reproduction claim.
+
+limitations:
+  - >
+    This study certifies COVERAGE, not scored trajectory agreement. Corpus-wide
+    agreement against the BioSimulators reference is not quantified here — see
+    repeat-matching (BIOMD1-3 subset) and the corpus explorer for per-model
+    agreement.
+  - >
+    Per-engine coverage is uneven; simbio (367/1008) limits five-engine coverage.
+  - >
+    Single deterministic sweep (seed 0); the robustness axis is model/engine
+    coverage, not seeds.
+
+falsifiability: >
+  A corpus-wide repeat-/reproducibility-match run that found systematic
+  numerical disagreement among the overlapping engines (beyond the understood
+  coverage gaps) would overturn the implicit "the corpus reproduces" reading of
+  this coverage result.
+
+# ─── Visualization ───────────────────────────────────────────────────
+visualizations:
+  - address: image:charts/corpus_engine_coverage.png
+    title: Corpus coverage across five ODE engines
+    caption: >
+      Engines-per-model distribution (5/4/3/2/1) and per-engine corpus coverage
+      over the 1008 reproduced BioModels.
+embed_visualizations:
+  - name: corpus-explorer
+    title: BioModels corpus explorer (per-model, per-engine overlays)
+    url: https://pub-eb913fbbdc584bd7add047c823570b13.r2.dev/biomodels-corpus/corpus_explorer.html
+    description: >
+      Interactive per-model overlay of every engine per variable — the surface
+      on which cross-engine agreement and divergence are directly visible
+      (Analyses tab; R2-hosted).
