@@ -155,17 +155,31 @@
   // ── Approvals ─────────────────────────────────────────────────────────────
   // Records the user's decision. Returns true once EVERY pending call has been
   // answered (i.e. the caller should now resume the turn).
-  function decide(state, id, approved, reason) {
+  // `remember` (a rememberable command only) travels inside the approval; the server decides whether it may be kept.
+  function decide(state, id, approved, reason, remember) {
     var t = findTool(state, id);
-    state.decisions[id] = approved ? true : { denied: reason || 'The user declined this action.' };
+    state.decisions[id] = approved ? (remember ? { approved: true, remember: true } : true)
+      : { denied: reason || 'The user declined this action.' };
     if (t) t.status = approved ? 'running' : 'denied';
     state.pending = state.pending.filter(function (p) { return p !== id; });
     return state.pending.length === 0;
   }
 
-  // Answer EVERY pending approval the same way (the "Approve all / Deny all" click).
+  // A command (or a workspace-trust request) is never approved in bulk: its card shows the exact command line, and
+  // it needs its own click. Deny-all still covers it.
+  function needsOwnClick(state, id) {
+    var t = findTool(state, id);
+    var ef = t && t.approval && t.approval.effect;
+    return !!(ef && (ef.kind === 'command' || ef.kind === 'trust'));
+  }
+
+  // Answer every pending approval the same way (the "Approve all / Deny all" click). "Approve all" skips the ones that
+  // need their own click and leaves them pending, so it returns false while any remain.
   function decideAll(state, approved, reason) {
-    state.pending.slice().forEach(function (id) { decide(state, id, approved, reason); });
+    state.pending.slice().forEach(function (id) {
+      if (approved && needsOwnClick(state, id)) return;
+      decide(state, id, approved, reason);
+    });
     return state.pending.length === 0;
   }
 
@@ -205,16 +219,39 @@
   function statusLabel(status) { return LABELS[status] || status; }
 
   // What the approval card shows: the operation, its method/path and the body.
+  // Bidirectional-control and zero-width characters can make the text shown differ from the text that runs
+  // (a reordered or invisible character), so an approval card shows them as \uXXXX instead of rendering them.
+  // Every format (Cf: bidi marks/overrides, zero-width, soft hyphen, tag characters), control (Cc, except tab/newline),
+  // line/paragraph separator and the common invisible fillers and variation selectors.
+  var HIDDEN = /(?![\t\n\r])[\p{Cc}\p{Cf}\p{Zl}\p{Zp}͏ᅟᅠㅤ⠀︀-️\u{E0100}-\u{E01EF}]/gu;
+  function revealHidden(s) {
+    return String(s).replace(HIDDEN, function (c) {
+      var cp = c.codePointAt(0).toString(16).toUpperCase();
+      return cp.length > 4 ? '\\u{' + cp + '}' : '\\u' + ('0000' + cp).slice(-4);
+    });
+  }
+  function revealDeep(v) {
+    if (typeof v === 'string') return revealHidden(v);
+    if (Array.isArray(v)) return v.map(revealDeep);
+    if (v && typeof v === 'object') { var o = {}; Object.keys(v).forEach(function (k) { o[revealHidden(k)] = revealDeep(v[k]); }); return o; }
+    return v;
+  }
+
   function describeApproval(part) {
     var ap = part.approval || {};
     var body = ap.body !== undefined && ap.body !== null ? ap.body
       : (part.args && part.args.body !== undefined ? part.args.body : null);
     var query = ap.query && Object.keys(ap.query).length ? ap.query : null;
+    var raw = JSON.stringify({ q: query, b: body, p: ap.path, s: ap.summary, e: ap.effect || null, o: ap.operation_id, m: ap.method });
+    var bodyText = body === null ? '' : revealHidden(JSON.stringify(body, null, 2));
     return {
-      title: ap.operation_id || (part.args && part.args.operation_id) || part.name,
-      method: ap.method || '', path: ap.path || '', summary: ap.summary || '',
-      query: query ? JSON.stringify(query, null, 2) : '',
-      body: body === null ? '' : JSON.stringify(body, null, 2),
+      title: revealHidden(ap.operation_id || (part.args && part.args.operation_id) || part.name || ''),
+      method: revealHidden(ap.method || ''), path: revealHidden(ap.path || ''), summary: revealHidden(ap.summary || ''),
+      query: query ? revealHidden(JSON.stringify(query, null, 2)) : '',
+      body: bodyText,
+      effect: ap.effect ? revealDeep(ap.effect) : null,
+      hidden: (HIDDEN.lastIndex = 0, HIDDEN.test(raw)) && !(HIDDEN.lastIndex = 0),
+      stats: { chars: bodyText.length, lines: bodyText ? bodyText.split('\n').length : 0 },
     };
   }
 
@@ -525,6 +562,7 @@
     { id: 'ollama', label: 'Ollama', color: '#4b5563', mark: 'Ol' },
     { id: 'opencode', label: 'OpenCode Go', color: '#2563eb', mark: 'OC' },
     { id: 'bedrock', label: 'AWS Bedrock', color: '#f59e0b', mark: 'AWS' },
+    { id: 'claude-code', label: 'Claude Code', color: '#d97757', mark: 'CC' },
     { id: 'openai-compatible', label: 'OpenAI-compatible', color: '#6366f1', mark: '⇄' },
   ];
   function providerMeta(id) {
@@ -549,14 +587,28 @@
   // (`known`, browser-local) and the selected model when it is neither. Providers with nothing
   // to list are omitted, as in marimo — except an endpoint provider (OpenAI-compatible): it has no catalogue, but the
   // Model menu is the only provider chooser, so it stays listed with a hint on how to use it.
+  // Not in marimo's registry (so not in the generated ai-models.js): Claude Code is the user's own `claude` CLI,
+  // which resolves these aliases itself. Merged under the registry, which wins for any id it ever defines.
+  var BUILTIN_MODELS = {
+    'claude-code': {
+      description: 'Your own signed-in Claude Code (the `claude` command on this machine).',
+      url: 'https://code.claude.com/docs',
+      models: [
+        { model: 'sonnet', name: 'Claude Sonnet', description: 'Claude Code\'s current Sonnet', thinking: true },
+        { model: 'opus', name: 'Claude Opus', description: 'Claude Code\'s current Opus', thinking: true },
+        { model: 'haiku', name: 'Claude Haiku', description: 'Claude Code\'s current Haiku', thinking: false },
+      ],
+    },
+  };
   var ENDPOINT_NOTES = {
+    'claude-code': 'Runs the `claude` on this machine, in Manual, Ask and Agent mode. Sign in once with `claude auth login` in a terminal.',
     'openai-compatible': 'Any OpenAI-style endpoint (vLLM, OpenRouter, …): enter openai-compatible/<model> below, then set its Base URL.',
   };
   function modelTree(registry, known, selected, installed) {
     registry = registry || {};
     installed = installed || {};
     return PROVIDERS.map(function (p) {
-      var reg = registry[p.id] || {};
+      var reg = registry[p.id] || BUILTIN_MODELS[p.id] || {};
       var here = installed[p.id];          // {models:[names], note} — what THIS machine actually has (Ollama)
       var models = here && Array.isArray(here.models)
         ? here.models.filter(function (n) { return typeof n === 'string' && n; })
@@ -621,29 +673,31 @@
     return k[provider];
   }
 
-  // ── Docking (PyCharm-style: the AI chip can dock left, right or bottom) ──────────────
-  var DOCKS = ['left', 'right', 'bottom'];
+  // ── Docking (PyCharm-style: a panel can dock left, right, bottom or top) ─────────────
+  var DOCKS = ['left', 'right', 'bottom', 'top'];
   function validDock(d) { return DOCKS.indexOf(d) >= 0; }
-  // Which drop zone is the pointer over? Bottom band first, then the left/right thirds; the
-  // middle is "cancel". (Zones are shown as edge overlays while dragging.)
+  // Which drop zone is the pointer over? Bottom/top bands first, then the left/right
+  // thirds; the middle is "cancel". (Zones are shown as edge overlays while dragging.)
   function dropZone(x, y, w, h) {
     if (!(w > 0 && h > 0) || x < 0 || y < 0 || x > w || y > h) return null;
     if (y > h * 0.72) return 'bottom';
+    if (y < h * 0.20) return 'top';
     if (x < w * 0.33) return 'left';
     if (x > w * 0.67) return 'right';
     return null;
   }
-  // Panel thickness (width for left/right, height for bottom), kept usable at any window size.
+  // Panel thickness (width for left/right, height for bottom/top), kept usable at any
+  // window size.
   function clampDock(dock, size, vw, vh) {
     var n = Math.round(+size) || 0;
-    if (dock === 'bottom') return Math.max(160, Math.min(n, Math.max(160, Math.floor(vh * 0.7))));
+    if (dock === 'bottom' || dock === 'top') return Math.max(160, Math.min(n, Math.max(160, Math.floor(vh * 0.7))));
     var cap = Math.floor(vw * 0.6);                              // never more than 60% of the window...
     return Math.max(Math.min(340, cap), Math.min(n, Math.min(720, cap)));   // ...even below 340px on a phone-width window
   }
 
   var api = {
-    esc: esc, createSplitter: createSplitter, newState: newState, startUserTurn: startUserTurn,
-    startResume: startResume, applyFrame: applyFrame, decide: decide, decideAll: decideAll,
+    esc: esc, revealHidden: revealHidden, createSplitter: createSplitter, newState: newState, startUserTurn: startUserTurn,
+    startResume: startResume, applyFrame: applyFrame, decide: decide, decideAll: decideAll, needsOwnClick: needsOwnClick,
     buildPromptRequest: buildPromptRequest, buildResumeRequest: buildResumeRequest, canRetry: canRetry,
     retryBody: retryBody,
     statusLabel: statusLabel, describeApproval: describeApproval, snapshot: snapshot,
