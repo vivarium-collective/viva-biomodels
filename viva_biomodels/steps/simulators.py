@@ -61,28 +61,41 @@ class BiomodelsCopasiStep(Step):
         basico.load_model(state["model_source"])
         sp = basico.get_species()
         rx = basico.get_reactions()
-        sp_name_to_id = dict(zip(sp.index, sp["sbml_id"]))
-        rx_name_to_id = dict(zip(rx.index, rx["sbml_id"]))
 
-        selection = ["Time"]
-        out_ids = ["time"]
-        for name, sid in sp_name_to_id.items():
-            selection.append(f"[{name}]")
-            out_ids.append(str(sid))
-        for name, sid in rx_name_to_id.items():
-            selection.append(f"({name}).Flux")
-            out_ids.append(str(sid))
+        # (output_selection token, canonical sbml-id) pairs, kept aligned.
+        # - get_species()/get_reactions() return None for a model with no
+        #   species / no reactions (e.g. rule-only or reaction-less models) —
+        #   guard against that instead of dereferencing None.
+        # - Select species by their COPASI **display_name**, not the index name:
+        #   when two species share a display name across compartments COPASI
+        #   disambiguates them ("H2O2{phagosome}"), so a bare "[H2O2]" selection
+        #   resolves to nothing and the whole run is lost. display_name is the
+        #   unique label COPASI emits (and equals the plain name when unique, so
+        #   single-compartment models are unaffected).
+        pairs: list[tuple[str, str]] = [("Time", "time")]
+        if sp is not None:
+            sp_names = sp["display_name"] if "display_name" in sp.columns else sp.index
+            for name, sid in zip(sp_names, sp["sbml_id"]):
+                pairs.append((f"[{name}]", str(sid)))
+        if rx is not None:
+            for name, sid in zip(rx.index, rx["sbml_id"]):
+                pairs.append((f"({name}).Flux", str(sid)))
 
+        selection = [sel for sel, _ in pairs]
         df = basico.run_time_course_with_output(
             output_selection=selection,
             duration=float(state["time"]),
             intervals=n_points - 1,
             use_initial_values=True,
         )
-        df = df[selection]  # guarantee column order matches out_ids
+        # Keep only the columns COPASI actually produced, preserving the
+        # selection↔sbml-id alignment; a token COPASI could not resolve is
+        # dropped rather than raising a KeyError that discards the whole run.
+        keep = [(sel, oid) for sel, oid in pairs if sel in df.columns]
+        df = df[[sel for sel, _ in keep]]
         rows = df.values.tolist()
         time_list = [float(r[0]) for r in rows]
-        columns = out_ids[1:]
+        columns = [oid for _, oid in keep[1:]]  # drop the leading Time/time pair
         values = [[float(v) for v in r[1:]] for r in rows]
         return {"result": {"time": time_list, "columns": columns, "values": values}}
 
