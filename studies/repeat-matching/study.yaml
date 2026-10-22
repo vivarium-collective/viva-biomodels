@@ -85,25 +85,15 @@ conditions:
       diff_from_baseline: >
         Initial dataGenerator handling — partial observable coverage
         (17/48 reference observables unmatched on BIOMD1-2).
+      composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
     - name: iter2-full-coverage
       diff_from_baseline: >
         Extended dataGenerator handling to full observable coverage; adds AMICI
         to the reference arms. This is the canonical run.
 
 # v3 back-compat mirror
-baseline:
-  - name: batch-compare-biomodels
-    composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
-    params:
-      biomodel_ids: [BIOMD0000000001, BIOMD0000000002, BIOMD0000000003]
-      simulators: [copasi, tellurium, simbio, amici, pysces]
-      reference_results_dir: datasets/biosimulators_sedml_results
-variants:
-  - name: iter2-full-coverage
-    description: >
-      Full-observable-coverage pass; the canonical run scored in this study.
-
-# ─── Validation ──────────────────────────────────────────────────────
+      composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
+  model_settings: []
 expected_behavior:
   - name: repeat-match-exact
     observable: repeat_arms_matched_exact
