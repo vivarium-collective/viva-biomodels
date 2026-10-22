@@ -35,6 +35,18 @@ def build_core():
     # `local:<Sim>UTCProcess` resolvable for the biomodel-process composite).
     from viva_biomodels.simulators import register_simulator_backends
     register_simulator_backends(core)
+    # Register the lightweight corpus-schema parquet emitter (viva-emitters) so
+    # composites can default to `local:LongFormParquetEmitter`. Guarded: if the
+    # [parquet-lite] extra isn't installed the composites fall back to RAMEmitter
+    # (see batch_compare_biomodels._default_emitter_address).
+    try:
+        from viva_emitters import LongFormParquetEmitter
+        core.register_link("LongFormParquetEmitter", LongFormParquetEmitter)
+    except Exception as exc:  # pragma: no cover - only when the extra is absent
+        import warnings
+        warnings.warn(
+            f"build_core: LongFormParquetEmitter unavailable ({type(exc).__name__}: "
+            f"{exc}); composites fall back to RAMEmitter.")
     # Register the workspace's custom types (biomodel_jobs, simulation_result,
     # numeric_result, …). Callers that only build_core() — e.g. the dashboard's
     # run_runner — must get a fully-configured core, not just the Edges; without
