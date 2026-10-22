@@ -9,6 +9,11 @@ import types
 import pytest
 from process_bigraph import allocate_core
 
+# viva_pysces is the optional viva-biomodels[pysces] extra — not installed in the
+# base CI env. These tests monkeypatch viva_pysces.processes, so skip the module
+# entirely when it isn't importable (mirrors how the runner treats pysces as optional).
+pytest.importorskip("viva_pysces", reason="requires the viva-biomodels[pysces] extra")
+
 from viva_biomodels.steps.simulators import BiomodelsPyscesStep
 
 
