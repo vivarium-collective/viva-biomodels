@@ -147,3 +147,52 @@ def test_reference_step_wired_when_dir_set():
     # Each per-simulator runner reads the ref_grid store.
     for sim in ("copasi", "tellurium"):
         assert state[f"runner_{sim}"]["inputs"]["ref_grid"] == ["ref_grid"]
+
+
+# --- default parquet emitter wiring -----------------------------------------
+
+import viva_biomodels.composites.batch_compare_biomodels as _bc
+
+
+def test_parquet_out_dir_param_registered():
+    assert "parquet_out_dir" in _entry().parameters
+    assert _entry().parameters["parquet_out_dir"]["type"] == "string"
+
+
+def test_default_emitter_is_parquet_when_available(monkeypatch):
+    monkeypatch.setattr(_bc, "_parquet_emitter_available", lambda: True)
+    assert _bc._default_emitter_address() == "local:LongFormParquetEmitter"
+
+
+def test_default_emitter_falls_back_to_ram_when_unavailable(monkeypatch):
+    monkeypatch.setattr(_bc, "_parquet_emitter_available", lambda: False)
+    assert _bc._default_emitter_address() == "local:RAMEmitter"
+
+
+def _emitter_node(overrides, monkeypatch, available=True):
+    monkeypatch.setattr(_bc, "_parquet_emitter_available", lambda: available)
+    doc = build_generator(_entry(), overrides=overrides)
+    state = doc["state"] if "state" in doc else doc
+    return state["emitter"]
+
+
+def test_parquet_emitter_writes_corpus_schema_when_out_dir_set(monkeypatch, tmp_path):
+    em = _emitter_node({"biomodel_ids": ["BIOMD0000000001"],
+                        "simulators": ["copasi"],
+                        "parquet_out_dir": str(tmp_path)}, monkeypatch)
+    assert em["address"] == "local:LongFormParquetEmitter"
+    cfg = em["config"]
+    assert cfg["source_key"] == "results"
+    assert cfg["path_levels"] == ["biomodel_id", "job", "engine"]
+    assert cfg["file_path"] == str(tmp_path)
+    assert cfg["parquet_file"] == "BIOMD0000000001.parquet"
+    assert cfg["write_on_query"] is True
+
+
+def test_parquet_emitter_ram_only_without_out_dir(monkeypatch):
+    em = _emitter_node({"biomodel_ids": ["BIOMD0000000001"],
+                        "simulators": ["copasi"]}, monkeypatch)
+    assert em["address"] == "local:LongFormParquetEmitter"
+    cfg = em["config"]
+    assert cfg["write_on_query"] is False
+    assert "file_path" not in cfg  # no file written in RAM-only mode

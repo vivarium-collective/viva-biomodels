@@ -27,6 +27,22 @@ from viva_superpowers.composite_generator import composite_generator
 from viva_biomodels.simulators import resolve_simulators
 
 
+def _parquet_emitter_available() -> bool:
+    """True when viva-emitters' lightweight parquet emitter is importable."""
+    try:
+        from viva_emitters import LongFormParquetEmitter  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def _default_emitter_address() -> str:
+    """Default emitter: the corpus-schema parquet emitter when the [parquet-lite]
+    extra is installed, else RAMEmitter (so the composite always resolves)."""
+    return ("local:LongFormParquetEmitter" if _parquet_emitter_available()
+            else "local:RAMEmitter")
+
+
 LOAD_STEP_ADDRESS    = "local:viva_biomodels.steps.load_biomodel.LoadBiomodelStep"
 LOAD_REF_STEP_ADDRESS = "local:viva_biomodels.steps.load_reference_results.LoadReferenceResultsStep"
 RUNNER_STEP_ADDRESS  = "local:viva_biomodels.steps.simulator_runner.SimulatorRunnerStep"
@@ -110,6 +126,17 @@ VIZ_STEP_ADDRESS     = "local:viva_biomodels.visualizations.batch_compare_overla
                 "live (pbg) engines among themselves."
             ),
         },
+        "parquet_out_dir": {
+            "type": "string",
+            "default": "",
+            "description": (
+                "When set, the default LongFormParquetEmitter writes the nested "
+                "`results` store as a tidy corpus-schema parquet "
+                "(biomodel_id, job, engine, variable, time, value) into this "
+                "directory as the run is gathered. Empty (default) keeps the "
+                "emitter in RAM-only mode (gather_emitter_results still works)."
+            ),
+        },
     },
     default_n_steps=1,
 )
@@ -124,7 +151,8 @@ def build_batch_compare_biomodels(
     reference_simulators: List[str] | None = None,
     include_steady_state: bool = False,
     with_emitter: bool = True,
-    emitter_address: str = "local:RAMEmitter",
+    emitter_address: str = "",
+    parquet_out_dir: str = "",
 ) -> Dict[str, Any]:
     sims = resolve_simulators(simulators)
 
@@ -215,17 +243,38 @@ def build_batch_compare_biomodels(
     }
 
     if with_emitter:
+        address = emitter_address or _default_emitter_address()
+        emitter_config: Dict[str, Any] = {"emit": {
+            "models":      "node",
+            "results":     "node",
+            "ref_grid":    "node",
+            "comparisons": "node",
+            "diagnostics": "node",
+            "viz_html":    "string",
+        }}
+        # When the default (or requested) emitter is the corpus-schema parquet
+        # emitter, configure it to serialize the nested `results` store into the
+        # tidy (biomodel_id, job, engine, variable, time, value) layout. It only
+        # writes a file when `parquet_out_dir` is set (otherwise it behaves like
+        # a RAMEmitter — gather_emitter_results still works either way).
+        if address.endswith("LongFormParquetEmitter"):
+            emitter_config.update({
+                "source_key":  "results",
+                "path_levels": ["biomodel_id", "job", "engine"],
+                "time_key":    "time",
+                "value_dtype": "float32",
+                "max_points":  0,
+                "write_on_query": bool(parquet_out_dir),
+            })
+            if parquet_out_dir:
+                emitter_config["file_path"] = parquet_out_dir
+                emitter_config["parquet_file"] = (
+                    f"{biomodel_ids[0]}.parquet" if len(biomodel_ids) == 1
+                    else "series.parquet")
         state["emitter"] = {
             "_type":   "step",
-            "address": emitter_address,
-            "config":  {"emit": {
-                "models":      "node",
-                "results":     "node",
-                "ref_grid":    "node",
-                "comparisons": "node",
-                "diagnostics": "node",
-                "viz_html":    "string",
-            }},
+            "address": address,
+            "config":  emitter_config,
             "inputs":  {
                 "models":      ["models"],
                 "results":     ["results"],

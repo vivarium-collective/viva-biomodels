@@ -41,6 +41,9 @@ dependencies = [
     "viva-tellurium",
     "viva-copasi",
     "viva-simbio",
+    # Lightweight corpus-schema Parquet emitter (LongFormParquetEmitter) — the
+    # batch composites' default emitter. [parquet-lite] pulls only pyarrow.
+    "viva-emitters[parquet-lite]",
     # BioModels corpus + SED-ML/SBML parsing (absorbed from pbg-biomodels-bundle).
     "biomodels",
     "rest-process",
@@ -96,6 +99,7 @@ viva-copasi = { git = "https://github.com/vivarium-collective/viva-copasi.git", 
 viva-simbio = { git = "https://github.com/vivarium-collective/viva-simbio.git", branch = "main" }
 viva-amici = { git = "https://github.com/vivarium-collective/viva-amici.git", branch = "main" }
 viva-pysces = { git = "https://github.com/vivarium-collective/viva-pysces.git", branch = "main" }
+viva-emitters = { git = "https://github.com/vivarium-collective/viva-emitters.git", branch = "main" }
 
 [build-system]
 requires = ["hatchling"]

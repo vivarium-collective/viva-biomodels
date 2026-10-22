@@ -28,8 +28,14 @@ ROOT = Path(os.environ.get("PBG_BIOMODELS_ROOT", os.getcwd()))
 
 
 def _run_model_store(bid: str, sims: List[str], ref_dir: str,
-                     include_steady_state: bool = False) -> Tuple[dict, dict, dict]:
-    """Run the batch-compare composite for one model; return its store slice."""
+                     include_steady_state: bool = False,
+                     parquet_out_dir: str = "") -> Tuple[dict, dict, dict]:
+    """Run the batch-compare composite for one model; return its store slice.
+
+    When ``parquet_out_dir`` is set the composite's default parquet emitter
+    writes ``<parquet_out_dir>/<bid>.parquet`` in the corpus schema as it is
+    gathered (in addition to the two-tier dataset the caller may build).
+    """
     from process_bigraph import Composite, gather_emitter_results
     from viva_biomodels import register_types
     from viva_biomodels.core import build_core
@@ -44,6 +50,7 @@ def _run_model_store(bid: str, sims: List[str], ref_dir: str,
         "reference_results_dir": ref_dir or "",
         "reference_simulators": [],
         "include_steady_state": include_steady_state,
+        "parquet_out_dir": parquet_out_dir,
     })
     comp = Composite(doc, core=core)
     comp.run(0.0)
@@ -57,7 +64,12 @@ def _task(bid: str, sims: List[str], ref_dir: str, out_dir: str, max_points: int
     """Ray task body: run one model, write its parquet, return the index entry."""
     os.chdir(str(ROOT))  # caches (amici_models/, pysces_models/, models/) are cwd-relative
     from viva_biomodels.two_tier import write_model
-    res, comp, diag = _run_model_store(bid, sims, ref_dir, include_steady_state)
+    # The default parquet emitter writes the per-model corpus-schema parquet into
+    # <out_dir>/parquet/ as the run is gathered; two_tier still builds the
+    # consolidated series/ + index entry below (the canonical dataset).
+    res, comp, diag = _run_model_store(
+        bid, sims, ref_dir, include_steady_state,
+        parquet_out_dir=str(Path(out_dir) / "parquet"))
     entry = write_model(bid, res.get(bid) or {}, comp.get(bid) or {},
                         Path(out_dir), max_points)
     entry["runs"] = (diag.get("runs") or {}).get(bid) or {}
