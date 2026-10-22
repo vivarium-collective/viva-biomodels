@@ -226,10 +226,14 @@ visualizations:
       Engines-per-model distribution (5/4/3/2/1) and per-engine corpus coverage
       over the 1008 reproduced BioModels.
 embed_visualizations:
-  - name: corpus-explorer
+  - name: Corpus Explorer
     title: BioModels corpus explorer (per-model, per-engine overlays)
     url: https://pub-eb913fbbdc584bd7add047c823570b13.r2.dev/biomodels-corpus/corpus_explorer.html
+    # `mode: launch` renders this as a full-size launch card (the study→module
+    # link) instead of a cramped inline iframe — it's a deeper interactive
+    # Explore module, also surfaced in the Explore tab. R2-hosted.
+    mode: launch
     description: >
       Interactive per-model overlay of every engine per variable — the surface
-      on which cross-engine agreement and divergence are directly visible
-      (Analyses tab; R2-hosted).
+      on which cross-engine agreement and divergence are directly visible.
+      Opens full-size; also available from the Explore tab.
