@@ -208,10 +208,23 @@ class BiomodelsPyscesStep(Step):
     def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
         import libsbml
         from viva_pysces.processes import _load_model
+        # Integrate through viva_pysces._simulate_utc (viva-pysces#2): LSODA first
+        # (non-stiff fast path unchanged), retry stiff all-NaN failures with CVODE
+        # when Assimulo is available, and RAISE on total failure — so a stiff model
+        # that LSODA can only drive to all-NaN surfaces as an honest failure here
+        # instead of an all-NaN "ok" leaf. Falls back to the old doSim path when the
+        # installed viva_pysces predates _simulate_utc.
+        try:
+            from viva_pysces.processes import _simulate_utc
+        except ImportError:  # pragma: no cover - older viva_pysces
+            _simulate_utc = None
 
         n_points = _validate_n_points(state["n_points"], "BiomodelsPyscesStep")
         model = _load_model(state["model_source"], quiet=True)
-        model.doSim(end=float(state["time"]), points=n_points)
+        if _simulate_utc is not None:
+            _simulate_utc(model, float(state["time"]), n_points, True)
+        else:
+            model.doSim(end=float(state["time"]), points=n_points)
 
         sarr, slabels = model.data_sim.getSpecies(lbls=True)   # Time + species ids
         rarr, rlabels = model.data_sim.getRates(lbls=True)     # Time + reaction ids
