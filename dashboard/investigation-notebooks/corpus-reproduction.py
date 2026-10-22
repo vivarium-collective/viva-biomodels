@@ -258,7 +258,7 @@ def _render_one(address, config, runs_db, study_yaml, overrides=None):
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `batch-compare-biomodels` | `viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels` | 0 | simulators=['copasi', 'tellurium', 'simbio', 'amici', 'pysces'], include_steady_state=True |
+# | `batch-compare-biomodels` | `viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels` | 0 | biomodel_ids=['all'], simulators=['copasi', 'tellurium', 'simbio', 'amici', 'pysces'], include_steady_state=True |
 
 # ### The model & its parameters
 #
@@ -271,7 +271,7 @@ def _render_one(address, config, runs_db, study_yaml, overrides=None):
 # === Parameters — edit any value, then re-run from the Run cell below ===
 # Each entry is the composite's current default; the comment explains it.
 ov_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels = {
-    'biomodel_ids'         : ['BIOMD0000000001'],   # BioModels identifiers, one per line. Each id gets one LoadBiomodelStep that writes into `models[<id>]`.
+    'biomodel_ids'         : ['BIOMD0000000001'],   # BioModels identifiers, one per line. Each id gets one LoadBiomodelStep that writes into `models[<id>]`. The special value `all` expands to the whole corpus (biomodels.get_all_identifiers()); the canonical full run fans this per-model via viva_biomodels.ray_runner rather than one giant composite.
     'simulators'           : ['copasi', 'tellurium', 'simbio'],   # Simulators to run, one per line. Allowed values: copasi, tellurium, simbio. One SimulatorRunnerStep is created per entry; the runner iterates `models` and dispatches each job to its UTC or steady-state adapter.
     'simbio_rtol'          : 1e-06,   # LSODA relative tolerance for simbio (CVODE-comparable default). Tighten (e.g. 1e-8) for stiff models where simbio diverges from COPASI/Tellurium. Ignored by COPASI/Tellurium.
     'simbio_atol'          : 1e-09,   # LSODA absolute tolerance for simbio. Tighten alongside simbio_rtol for stiff models.
@@ -342,7 +342,7 @@ else:
 # === Parameters — edit any value, then re-run from the Run cell below ===
 # Each entry is the composite's current default; the comment explains it.
 ov_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels = {
-    'biomodel_ids'         : ['BIOMD0000000001'],   # BioModels identifiers, one per line. Each id gets one LoadBiomodelStep that writes into `models[<id>]`.
+    'biomodel_ids'         : ['BIOMD0000000001'],   # BioModels identifiers, one per line. Each id gets one LoadBiomodelStep that writes into `models[<id>]`. The special value `all` expands to the whole corpus (biomodels.get_all_identifiers()); the canonical full run fans this per-model via viva_biomodels.ray_runner rather than one giant composite.
     'simulators'           : ['copasi', 'tellurium', 'simbio'],   # Simulators to run, one per line. Allowed values: copasi, tellurium, simbio. One SimulatorRunnerStep is created per entry; the runner iterates `models` and dispatches each job to its UTC or steady-state adapter.
     'simbio_rtol'          : 1e-06,   # LSODA relative tolerance for simbio (CVODE-comparable default). Tighten (e.g. 1e-8) for stiff models where simbio diverges from COPASI/Tellurium. Ignored by COPASI/Tellurium.
     'simbio_atol'          : 1e-09,   # LSODA absolute tolerance for simbio. Tighten alongside simbio_rtol for stiff models.
