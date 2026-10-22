@@ -67,26 +67,8 @@ conditions:
         (biomodels.get_all_identifiers()) via the Ray runner; the committed
         dataset is the union of all per-model results.
 
-baseline:
-  - name: baseline
-    composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
-    params:
-      simulators:
-        - copasi
-        - tellurium
-        - simbio
-        - amici
-        - pysces
-      include_steady_state: true
-    description: >
-      Per-model multi-engine comparison. The full run fans this composite over
-      every BioModel id (biomodels.get_all_identifiers()) via the Ray runner;
-      the committed dataset is the union of all per-model results.
-variants:
-  - name: full-corpus-sweep
-    description: >
-      The corpus-wide fan-out over all BioModel ids via the Ray runner — the
-      canonical run scored in this study.
+      composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
+  model_settings: []
 interventions: []
 expected_behavior:
   - name: corpus-coverage-full
