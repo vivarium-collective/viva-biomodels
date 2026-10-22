@@ -258,7 +258,7 @@ def _render_one(address, config, runs_db, study_yaml, overrides=None):
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `baseline` | `viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels` | 0 | simulators=['copasi', 'tellurium', 'simbio', 'amici', 'pysces'], include_steady_state=True |
+# | `batch-compare-biomodels` | `viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels` | 0 | simulators=['copasi', 'tellurium', 'simbio', 'amici', 'pysces'], include_steady_state=True |
 
 # ### The model & its parameters
 #
@@ -278,6 +278,7 @@ ov_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels = {
     'reference_results_dir': '',   # Path to a BioSimulators SED-ML reference dataset (the dir containing BIOMD*/<engine>/<version>/.../reports.h5). When set, each model's reference engines are loaded into the comparison as `reference:<engine>` and the live engines are sampled on the reference time grid. Empty (default) disables reference loading.
     'reference_simulators' : [],   # Restrict which reference engines to load, one per line (e.g. copasi, tellurium). Empty (default) loads every engine present on disk for each model. Ignored unless reference_results_dir is set.
     'include_steady_state' : False,   # Also run a steady-state comparison for every model. Appends a synthetic steady-state job (when the SED-ML declares none), dispatched to each engine's SteadyStateStep. BioSimulators reference data is time-course only, so steady-state jobs compare live (pbg) engines among themselves.
+    'parquet_out_dir'      : '',   # When set, the default LongFormParquetEmitter writes the nested `results` store as a tidy corpus-schema parquet (biomodel_id, job, engine, variable, time, value) into this directory as the run is gathered. Empty (default) keeps the emitter in RAM-only mode (gather_emitter_results still works).
 }
 
 # ### Run
@@ -293,8 +294,8 @@ RUNS_DB = str(STUDY_DIR / "runs.db")
 # This study has no *recorded* runs yet. RERUN builds its declared
 # composite(s) live and runs them; a composite whose module processes
 # are not implemented yet reports the error instead of crashing.
-STEPS_baseline = 100
-INTERVAL_baseline = 1.0
+STEPS_batch_compare_biomodels = 100
+INTERVAL_batch_compare_biomodels = 1.0
 
 if RERUN:
     from process_bigraph import Composite
@@ -303,10 +304,10 @@ if RERUN:
             _ov = ov_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels if 'ov_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels' in dir() else None  # edits from the panel cell, if any
             spec_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels = materialize_composite('viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels', _ov)
             _comp = Composite({'state': spec_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels['state']}, core=core)
-            _comp.run(STEPS_baseline)
-        print('ran', 'baseline', f'(viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels) for', STEPS_baseline, 'steps')
+            _comp.run(STEPS_batch_compare_biomodels)
+        print('ran', 'batch-compare-biomodels', f'(viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels) for', STEPS_batch_compare_biomodels, 'steps')
     except Exception as _e:
-        print(f"baseline not runnable yet: {type(_e).__name__}: {_e}")
+        print(f"batch-compare-biomodels not runnable yet: {type(_e).__name__}: {_e}")
 else:
     print("RERUN=False — not re-simulating.")
 
@@ -348,6 +349,7 @@ ov_viva_biomodels_composites_batch_compare_biomodels_batch_compare_biomodels = {
     'reference_results_dir': '',   # Path to a BioSimulators SED-ML reference dataset (the dir containing BIOMD*/<engine>/<version>/.../reports.h5). When set, each model's reference engines are loaded into the comparison as `reference:<engine>` and the live engines are sampled on the reference time grid. Empty (default) disables reference loading.
     'reference_simulators' : [],   # Restrict which reference engines to load, one per line (e.g. copasi, tellurium). Empty (default) loads every engine present on disk for each model. Ignored unless reference_results_dir is set.
     'include_steady_state' : False,   # Also run a steady-state comparison for every model. Appends a synthetic steady-state job (when the SED-ML declares none), dispatched to each engine's SteadyStateStep. BioSimulators reference data is time-course only, so steady-state jobs compare live (pbg) engines among themselves.
+    'parquet_out_dir'      : '',   # When set, the default LongFormParquetEmitter writes the nested `results` store as a tidy corpus-schema parquet (biomodel_id, job, engine, variable, time, value) into this directory as the run is gathered. Empty (default) keeps the emitter in RAM-only mode (gather_emitter_results still works).
 }
 
 # ### Run

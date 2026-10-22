@@ -835,15 +835,8 @@ a.viv-bs-commit:hover { text-decoration: underline; }
           <small>workbench</small>
         </div>
       </a>
-      <!-- Global search — a magnifier next to the collapse toggle; opens the
-           pop-out search window across studies, catalog, registry, runs and
-           resources (see search-palette.js; ⌘K / Ctrl-K also opens it). -->
-      <button class="viv-rail-toggle viv-rail-search-btn" id="viv-rail-search-btn" type="button" aria-label="Search the workbench" title="Search everything (⌘K)" onclick="(window._vivOpenGlobalSearch||_vivToggleRailSearch)()">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="viv-rail-toggle-svg">
-          <circle cx="11" cy="11" r="7"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-      </button>
+      <!-- Global search moved to a "Search" nav tab above Resources (see below);
+           the header now holds only the collapse toggle. ⌘K still opens search. -->
       <!-- Rail collapse/expand toggle. Lives in the header so, when collapsed, it
            can overlay the logo and reveal on hover (see .viv-rail-collapsed CSS). -->
       <button class="viv-rail-toggle" id="viv-rail-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" onclick="_vivToggleRail()">
@@ -915,22 +908,20 @@ a.viv-bs-commit:hover { text-decoration: underline; }
 
     <!-- Primary nav -->
     <nav class="viv-rail-section" role="tablist">
-      <!-- Studies: the investigations overview — the default landing view and the
-           first rail item. The per-investigation study list lives in the search
-           section below. Branching-fan (DAG) icon. -->
-      <a href="#investigations"    class="viv-rail-link menu-link" data-page="investigations">
+      <!-- Search: opens the global search palette (studies, catalog, registry,
+           runs, resources). Not a page — an action styled as a nav tab, so it
+           carries no data-page and never takes the active state. ⌘K also opens
+           it. Moved here from the header magnifier. -->
+      <a href="#" id="rail-search" class="viv-rail-link viv-rail-search-link" role="button"
+         title="Search everything (⌘K)" aria-label="Search the workbench"
+         onclick="event.preventDefault();(window._vivOpenGlobalSearch||_vivToggleRailSearch)();return false;">
         <span class="viv-rail-link-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="viv-rail-link-svg">
-            <rect x="2.5" y="9" width="6" height="6"/>
-            <rect x="16" y="3" width="5.5" height="4"/>
-            <rect x="16" y="10" width="5.5" height="4"/>
-            <rect x="16" y="17" width="5.5" height="4"/>
-            <path d="M8.5 12L16 5"/>
-            <path d="M8.5 12h7.5"/>
-            <path d="M8.5 12L16 19"/>
+            <circle cx="11" cy="11" r="7"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </span>
-        <span class="viv-rail-link-label">Studies</span>
+        <span class="viv-rail-link-label">Search</span>
       </a>
       <!-- Resources: the workspace's source material. A single tab with two
            sub-tabs — "Datasets & references" (the /api/inputs datasets,
@@ -1041,6 +1032,25 @@ a.viv-bs-commit:hover { text-decoration: underline; }
           </svg>
         </span>
         <span class="viv-rail-link-label">Code</span>
+      </a>
+      <!-- Studies: the investigations overview. The LAST rail item (moved to the
+           bottom of the menu), but still the DEFAULT landing view on workbench
+           load (the default page is 'investigations', set in walkthrough.js —
+           independent of this menu position). The per-investigation study list
+           lives in the search section below. Branching-fan (DAG) icon. -->
+      <a href="#investigations"    class="viv-rail-link menu-link" data-page="investigations">
+        <span class="viv-rail-link-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="viv-rail-link-svg">
+            <rect x="2.5" y="9" width="6" height="6"/>
+            <rect x="16" y="3" width="5.5" height="4"/>
+            <rect x="16" y="10" width="5.5" height="4"/>
+            <rect x="16" y="17" width="5.5" height="4"/>
+            <path d="M8.5 12L16 5"/>
+            <path d="M8.5 12h7.5"/>
+            <path d="M8.5 12L16 19"/>
+          </svg>
+        </span>
+        <span class="viv-rail-link-label">Studies</span>
       </a>
       <!-- The Branch page (#github) is no longer a rail item — it's reached by
            clicking the workspace source display at the top of the rail (see
@@ -1541,7 +1551,13 @@ a.viv-bs-commit:hover { text-decoration: underline; }
   <div id="investigation-detail-view" style="display:none; margin-top:8px">
     <button class="iset-back-link" onclick="_showInvestigationList()" title="Back to all investigations"
             style="background:none; border:none; padding:0; margin:0 0 4px; color:#64748b; font-size:0.82em; cursor:pointer; display:inline-flex; align-items:center; gap:4px">&larr; All investigations</button>
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+    <!-- Duplicate of the workspace chrome header (#ws-title/#ws-status/#ws-actions),
+         which is the single chrome for the investigation title, status, and
+         Report/Notebook/Run actions now. Hidden on every render path so the
+         detail view doesn't show a second title row. (walkthrough.js also hides
+         this from _renderInvestigationDetailInto, but that doesn't fire on all
+         paths — the inline display:none guarantees it.) -->
+    <div style="display:none; align-items:center; gap:12px; margin-bottom:8px;">
       <h3 id="investigation-detail-title" style="margin:0; flex:1"></h3>
       <span id="investigation-detail-status" class="status-pill planned" style="font-size:0.85em"></span>
       <span class="inv-export-actions" style="display:inline-flex; gap:6px">
@@ -1590,15 +1606,13 @@ a.viv-bs-commit:hover { text-decoration: underline; }
       
       <span id="aig-layout-group" class="aig-tb-group" role="group" aria-label="Graph orientation">
         <span class="aig-tb-label">Layout</span>
+        
         <span class="aig-tb-seg">
           <button id="aig-orient-lr" type="button" title="Left → right" aria-label="Left to right"
                   onclick="window._setGraphOrientation('LR')">⇄</button>
           <button id="aig-orient-tb" type="button" title="Top → bottom" aria-label="Top to bottom"
                   onclick="window._setGraphOrientation('TB')">⇅</button>
         </span>
-        <button id="aig-orient-auto" type="button" class="aig-tb-link" title="Reset to automatic orientation"
-                aria-label="Reset to automatic orientation" onclick="window._resetGraphOrientation()"
-                style="visibility:hidden">auto</button>
       </span>
       <!-- One unified Zoom slider: from a zoomed-out overview (names-only, small)
            on the left up to the single-card level (full detail, large) on the
@@ -2674,7 +2688,7 @@ Nothing on <code id="pr-base-display-2">main</code> changes until someone presse
      DataSource global that renderers call to fetch narrative data.
      local-server mode (default) fetches from the same-origin /api/* endpoints.
      Hosted mode (sub-projects #2/#3) will set a different config here. -->
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "e28645eb2f79c997ab666e4318536b56ecf812b7", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/e28645eb2f79c997ab666e4318536b56ecf812b7", "branch": "main", "lockfile": "uv.lock@976a85f6167a", "generated_at": "2026-10-20 20:35 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "40f158a2ad8bf0575adb1d839e1711633671d77a", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/40f158a2ad8bf0575adb1d839e1711633671d77a", "branch": "main", "lockfile": "uv.lock@4b016132e740", "generated_at": "2026-10-22 02:30 UTC"} };</script>
 <!-- Derive the global URL prefix from the (possibly publish-injected) config.
      Many renderers prefix workspace-root-absolute links (/studies/, /api/)
      with window.__BASE_PATH__ so they resolve when the read-only bundle is
