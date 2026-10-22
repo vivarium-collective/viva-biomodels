@@ -58,6 +58,7 @@ conditions:
   baseline:
     composite: viva_biomodels.composites.batch_compare_biomodels.batch-compare-biomodels
     params:
+      biomodel_ids: [all]
       simulators: [copasi, tellurium, simbio, amici, pysces]
       include_steady_state: true
   variants:

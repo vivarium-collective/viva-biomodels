@@ -196,3 +196,15 @@ def test_parquet_emitter_ram_only_without_out_dir(monkeypatch):
     cfg = em["config"]
     assert cfg["write_on_query"] is False
     assert "file_path" not in cfg  # no file written in RAM-only mode
+
+
+def test_biomodel_ids_all_expands_to_full_corpus(monkeypatch):
+    """biomodel_ids=['all'] expands to biomodels.get_all_identifiers()."""
+    import biomodels
+    monkeypatch.setattr(biomodels, "get_all_identifiers",
+                        lambda: ["BIOMD0000000002", "BIOMD0000000001"])
+    doc = build_generator(_entry(), overrides={
+        "biomodel_ids": ["all"], "simulators": ["copasi"]})
+    state = doc["state"] if "state" in doc else doc
+    loads = sorted(k for k in state if k.startswith("load_"))
+    assert loads == ["load_BIOMD0000000001", "load_BIOMD0000000002"]

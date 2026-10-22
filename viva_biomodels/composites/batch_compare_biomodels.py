@@ -64,7 +64,11 @@ VIZ_STEP_ADDRESS     = "local:viva_biomodels.visualizations.batch_compare_overla
             "default": ["BIOMD0000000001"],
             "description": (
                 "BioModels identifiers, one per line. Each id gets one "
-                "LoadBiomodelStep that writes into `models[<id>]`."
+                "LoadBiomodelStep that writes into `models[<id>]`. The special "
+                "value `all` expands to the whole corpus (biomodels."
+                "get_all_identifiers()); the canonical full run fans this "
+                "per-model via viva_biomodels.ray_runner rather than one giant "
+                "composite."
             ),
         },
         "simulators": {
@@ -155,6 +159,15 @@ def build_batch_compare_biomodels(
     parquet_out_dir: str = "",
 ) -> Dict[str, Any]:
     sims = resolve_simulators(simulators)
+    # `["all"]` (or "all") means the whole BioModels corpus — mirrors the
+    # simulators "all" convention. The full-corpus study declares this so its
+    # config honestly reads "all" instead of an implicit single-model default.
+    # NOTE: expanding here builds one composite spanning the whole corpus (heavy);
+    # the canonical full run instead fans this per-model composite over
+    # get_all_identifiers() via viva_biomodels.ray_runner and unions the results.
+    if biomodel_ids == "all" or biomodel_ids == ["all"]:
+        import biomodels
+        biomodel_ids = sorted(biomodels.get_all_identifiers())
 
     state: Dict[str, Any] = {
         "models":      {bid: {"sbml_path": "", "sedml_jobs": []}
