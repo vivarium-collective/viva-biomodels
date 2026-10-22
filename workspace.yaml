@@ -9,5 +9,11 @@ simulations: []
 datasets: []
 references_bib: references/papers.bib
 imports: {}
+runtime:
+  # The corpus run's durable output is parquet (the batch-compare composite's
+  # LongFormParquetEmitter + the two-tier corpus dataset), so study runs store
+  # declared observables via the workbench's parquet emitter rather than the
+  # default xarray/zarr.
+  default_emitter: parquet
 server:
   enabled: false
