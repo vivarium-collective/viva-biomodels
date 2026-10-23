@@ -118,6 +118,13 @@
   .stat b { font-family: var(--font-mono); font-size: 15px; font-variant-numeric: tabular-nums; }
   .stat span { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
 
+  .dl { display: flex; gap: 8px; align-items: center; margin-left: 14px; }
+  .dl a { font-size: 12px; text-decoration: none; color: var(--accent);
+          border: 1px solid var(--line-strong); border-radius: 999px;
+          padding: 3px 11px; white-space: nowrap; background: var(--accent-soft); }
+  .dl a:hover { border-color: var(--accent); }
+  .dl a.sub { color: var(--muted); background: transparent; }
+
   .legend { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
   .legend .lbl {
     font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em;
@@ -270,6 +277,10 @@
   <div class="titlebar">
     <div class="brand"><span class="dot"></span>Corpus Explorer</div>
     <div class="subtitle" id="subtitle">Multi-simulator BioModels comparison</div>
+    <div class="dl" id="dlbox">
+      <a id="dl-main" href="#" download title="Full corpus dataset — all engines, long-form parquet (biomodel_id, job, engine, variable, time, value)">⬇ Download corpus</a>
+      <a id="dl-full" class="sub" href="#" download title="Full resolution: 200 points per trace">full-res</a>
+    </div>
     <div class="stats" id="stats"></div>
   </div>
   <div class="legend" id="legend">
@@ -313,6 +324,14 @@
 
   var DATA_BASE = "https://pub-eb913fbbdc584bd7add047c823570b13.r2.dev/biomodels-corpus";
   var base = (new URLSearchParams(location.search).get("data") || DATA_BASE).replace(/\/+$/, "");
+
+  // Wire the header Download links to the hosted parquet(s) under the active base.
+  (function () {
+    var m = document.getElementById("dl-main");
+    if (m) m.href = base + "/corpus_timecourse_all_engines.parquet";
+    var f = document.getElementById("dl-full");
+    if (f) f.href = base + "/corpus_timecourse_all_engines.full.parquet";
+  })();
 
   var ENGINE_ORDER = ["amici", "copasi", "pysces", "simbio", "tellurium"];
   var DASHES = ["solid", "dot", "dash", "longdash", "dashdot", "longdashdot"];
