@@ -1503,7 +1503,7 @@ a.viv-bs-commit:hover { text-decoration: underline; }
     <div class="inv-header-bar" style="display:flex;align-items:center;flex-wrap:wrap;gap:5px 7px;margin:0 0 10px">
       
       <span id="ws-title-wrap" style="display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1 1 auto;line-height:1.15">
-        <span id="ws-title-kicker" style="font-size:0.68em;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#94a3b8">Investigation</span>
+        
         <strong id="ws-title" style="font-size:1.35em;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></strong>
       </span>
       <span id="ws-status"></span>
@@ -1732,15 +1732,7 @@ a.viv-bs-commit:hover { text-decoration: underline; }
           <button type="button" role="menuitem" onclick="window._aigDownloadMenuPick('pdf')" style="display:block;width:100%;text-align:left;border:none;border-top:1px solid #f1f5f9;background:transparent;padding:7px 12px;cursor:pointer;font-size:0.95em;color:#334155">↓ PDF</button>
         </div>
       </span>
-      <!-- Dock control: choose a side (left/right/bottom/top), pop out, or go back
-           inline. Placed after the Display/Legend/Export trio so those three stay
-           grouped together. -->
-      <span class="aig-tb-group" role="group" aria-label="Graph panel" title="Dock">
-        <button id="aig-dock-panel-btn" type="button" class="aig-tb-btn"
-                title="Dock the investigation graph — choose a side, pop out, or go back inline"
-                aria-haspopup="menu" aria-label="Dock the investigation graph"
-                onclick="window.GraphPanel&&GraphPanel.dockMenu(this)">◧</button>
-      </span>
+      
       
       <span class="aig-tb-hint" aria-hidden="true" title="Single-click a study to select it; double-click to open it">click: select · double-click: open</span>
     </div>
@@ -2774,7 +2766,7 @@ Nothing on <code id="pr-base-display-2">main</code> changes until someone presse
      DataSource global that renderers call to fetch narrative data.
      local-server mode (default) fetches from the same-origin /api/* endpoints.
      Hosted mode (sub-projects #2/#3) will set a different config here. -->
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "5d92003fefd38fa321c5fdd9a531abe29d073360", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/5d92003fefd38fa321c5fdd9a531abe29d073360", "branch": "main", "lockfile": "uv.lock@4b016132e740", "generated_at": "2026-10-23 04:00 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "5559679520710e3f63ce9bd9eee0e993e13c5d8d", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/5559679520710e3f63ce9bd9eee0e993e13c5d8d", "branch": "main", "lockfile": "uv.lock@4b016132e740", "generated_at": "2026-10-23 17:56 UTC"} };</script>
 <!-- Derive the global URL prefix from the (possibly publish-injected) config.
      Many renderers prefix workspace-root-absolute links (/studies/, /api/)
      with window.__BASE_PATH__ so they resolve when the read-only bundle is
