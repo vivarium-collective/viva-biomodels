@@ -356,6 +356,17 @@ body.snapshot .viv-wsp-trigger .viv-wsp-dot { color: #94a3b8; }
 .viv-wsp-legend b { font-weight: 700; }
 .viv-wsp-settings { color: #6366f1; text-decoration: none; font-weight: 600; }
 .viv-wsp-settings:hover { text-decoration: underline; }
+.viv-wsp-foot-actions { display: flex; align-items: center; gap: 10px; }
+.viv-wsp-showall, .viv-wsp-cleanstale {
+  border: none; background: none; cursor: pointer; font: inherit; font-weight: 600; padding: 0;
+}
+.viv-wsp-showall { color: #6366f1; }
+.viv-wsp-showall:hover:not(:disabled) { text-decoration: underline; }
+.viv-wsp-showall:disabled { color: #cbd5e1; cursor: default; }
+.viv-wsp-cleanstale { color: #d97706; }
+.viv-wsp-cleanstale:hover:not(:disabled) { text-decoration: underline; }
+.viv-wsp-cleanstale[hidden] { display: none; }
+:root[data-theme="dark"] .viv-wsp-showall { color: var(--link); }
 /* Dark theme. The picker's a fixed-position popover (escapes the rail's own
    dark styling context), so it needs its own coverage — same token/hex idiom
    as everywhere else, indigo accents via the rgba(hue,alpha) idiom already
@@ -853,16 +864,27 @@ a.viv-bs-commit:hover { text-decoration: underline; }
            dropdown and the standalone Branch rail item. -->
       <div class="viv-wsp-trigger" id="viv-workspace-picker-trigger" role="button" tabindex="0"
            title="Switch workspace — pick from your workspaces">
+        <span class="viv-ws-avatar viv-ws-avatar-mono"
+              data-ws-name="biomodels" aria-hidden="true">
+          
+          <span class="viv-ws-mono"></span>
+          <span class="viv-wsp-dot viv-wsp-ready" title="workspace loaded">●</span>
+        </span>
         <span class="viv-wsp-trigger-current">
-          <span class="viv-wsp-dot viv-wsp-ready">●</span>
           <span class="viv-wsp-trigger-names">
             <strong>biomodels</strong>
-            <span class="viv-wsp-trigger-branch" title="branch: ci/publish-dashboard-nonblock">ci/publish-dashboard-nonblock</span>
+            <span class="viv-wsp-trigger-branch" title="branch: main">main</span>
           </span>
         </span>
         <span class="viv-wsp-trigger-caret" aria-hidden="true">▾</span>
         <button class="viv-wsp-source-btn" id="viv-wsp-source-btn" type="button"
                 title="Open Source — repository · branch · commit" aria-label="Open Source page">↗</button>
+        <!-- Shown only when the rail is collapsed: a hover flyout naming the workspace. -->
+        <span class="viv-ws-flyout" aria-hidden="true">
+          <strong>biomodels</strong>
+          <span class="viv-ws-flyout-branch">main</span>
+          <span class="viv-ws-flyout-hint">click to switch workspace</span>
+        </span>
       </div>
     </div>
     <!-- Snapshot mode: static repo label replaces the switcher dropdown. -->
@@ -893,6 +915,27 @@ a.viv-bs-commit:hover { text-decoration: underline; }
          to link it to its real GitHub URL. */
       window._workspaceName = "biomodels";
       window._workspaceRepoUrl = "https://github.com/vivarium-collective/viva-biomodels";
+
+      /* Workspace avatar: fill the monogram (initials + a hue derived from the
+         name) when there's no profile picture, so each workspace looks distinct —
+         in the expanded chip and the collapsed rail alike. */
+      (function () {
+        function initAvatars() {
+          document.querySelectorAll('.viv-ws-avatar').forEach(function (a) {
+            var name = (a.getAttribute('data-ws-name') || '').trim();
+            var mono = a.querySelector('.viv-ws-mono');
+            if (!mono || !name) return;
+            var toks = name.split(/[-_ /.]+/).filter(Boolean);
+            var initials = ((toks[0] || name).charAt(0) + ((toks[1] || '').charAt(0))).toUpperCase();
+            mono.textContent = initials || name.charAt(0).toUpperCase() || '?';
+            var h = 0;
+            for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+            mono.style.background = 'hsl(' + (h % 360) + ', 50%, 52%)';
+          });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAvatars);
+        else initAvatars();
+      })();
     </script>
 
     <!-- Everything from the Workspace nav down scrolls as ONE region, so a long
@@ -2730,7 +2773,7 @@ Nothing on <code id="pr-base-display-2">main</code> changes until someone presse
      DataSource global that renderers call to fetch narrative data.
      local-server mode (default) fetches from the same-origin /api/* endpoints.
      Hosted mode (sub-projects #2/#3) will set a different config here. -->
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/ci/publish-dashboard-nonblock", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "8b2bc2d78c3cb0618127de6a80d42a2b388299ba", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/8b2bc2d78c3cb0618127de6a80d42a2b388299ba", "branch": "ci/publish-dashboard-nonblock", "lockfile": "uv.lock@4b016132e740", "generated_at": "2026-10-23 00:38 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "96830eebd535c789ab19a2dc41c7bec01f50c9e6", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/96830eebd535c789ab19a2dc41c7bec01f50c9e6", "branch": "main", "lockfile": "uv.lock@4b016132e740", "generated_at": "2026-10-23 00:58 UTC"} };</script>
 <!-- Derive the global URL prefix from the (possibly publish-injected) config.
      Many renderers prefix workspace-root-absolute links (/studies/, /api/)
      with window.__BASE_PATH__ so they resolve when the read-only bundle is
