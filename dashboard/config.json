@@ -2,6 +2,6 @@
   "mode": "snapshot",
   "smsApiBase": "",
   "repo": "https://github.com/vivarium-collective/viva-biomodels",
-  "commit": "b2254b2f4a6ba1b8c700b2120966ff01284ec69d",
-  "generated_from_ref": "main"
+  "commit": "8b2bc2d78c3cb0618127de6a80d42a2b388299ba",
+  "generated_from_ref": "ci/publish-dashboard-nonblock"
 }
