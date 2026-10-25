@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Study: full-corpus-reproduction</title>
-<link rel="stylesheet" href="/viva-biomodels/dashboard/assets/style.css">
-<link rel="stylesheet" href="/viva-biomodels/dashboard/assets/progress-track.css">
-<link rel="stylesheet" href="/viva-biomodels/dashboard/assets/responsive.css">
+<link rel="stylesheet" href="/viva-biomodels/workbench/assets/style.css">
+<link rel="stylesheet" href="/viva-biomodels/workbench/assets/progress-track.css">
+<link rel="stylesheet" href="/viva-biomodels/workbench/assets/responsive.css">
 <!-- Inherit the workbench light/dark theme (this page loads in an iframe;
      same-origin, so it shares the parent's localStorage 'viv.theme'; the
      'storage' event, which the browser fires here when the parent toggles,
@@ -1458,9 +1458,9 @@
 </section>
 
 </main>
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "af66b40fceec1b9a81c8bce158ed1339eb5d8e6d", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/af66b40fceec1b9a81c8bce158ed1339eb5d8e6d", "branch": "main", "lockfile": "uv.lock@cdbb62f6883f", "generated_at": "2026-10-25 17:46 UTC"} };</script>
-<script src="/viva-biomodels/dashboard/assets/data-source.js"></script>
-<script src="/viva-biomodels/dashboard/assets/toast.js"></script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/workbench", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "68d6bc65be6357cac1e3d6fee673f5f95d8c9d87", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/68d6bc65be6357cac1e3d6fee673f5f95d8c9d87", "branch": "main", "lockfile": "uv.lock@cdbb62f6883f", "generated_at": "2026-10-25 18:19 UTC"} };</script>
+<script src="/viva-biomodels/workbench/assets/data-source.js"></script>
+<script src="/viva-biomodels/workbench/assets/toast.js"></script>
 <script>
 window._studyName = "full-corpus-reproduction";
 window._study = null;  // populated by _bootstrapStudy() in study-detail.js
@@ -1573,9 +1573,9 @@ function _seedFollowupProposal(parent, proposalId) {
 window._seedFollowupStudy = _seedFollowupStudy;
 window._seedFollowupProposal = _seedFollowupProposal;
 </script>
-<script src="/viva-biomodels/dashboard/assets/configure-run.js"></script>
-<script src="/viva-biomodels/dashboard/assets/perfetto-open.js"></script>
-<script src="/viva-biomodels/dashboard/assets/sim-table.js"></script>
+<script src="/viva-biomodels/workbench/assets/configure-run.js"></script>
+<script src="/viva-biomodels/workbench/assets/perfetto-open.js"></script>
+<script src="/viva-biomodels/workbench/assets/sim-table.js"></script>
 <!-- composite-card.js: shared composite-card renderer (extracted from
      walkthrough.js, study-spine-reorg Task 6) — the Model tab uses
      _renderCompositeCardFull to show the SAME rich card the Modules/
@@ -1585,12 +1585,12 @@ window._seedFollowupProposal = _seedFollowupProposal;
      which this iframe does NOT load). composite-card.js's _pcardToggleSec needs
      it to MOUNT a composite's loom — without it, opening a composite from a
      Model card stays stuck on "Resolving composite…". -->
-<script src="/viva-biomodels/dashboard/assets/loom-embed.js"></script>
-<script src="/viva-biomodels/dashboard/assets/composite-card.js"></script>
-<script src="/viva-biomodels/dashboard/assets/checklist-select.js"></script>
-<script src="/viva-biomodels/dashboard/assets/progress-track.js"></script>
-<script src="/viva-biomodels/dashboard/assets/comparison-view.js"></script>
-<script src="/viva-biomodels/dashboard/assets/study-detail.js"></script>
+<script src="/viva-biomodels/workbench/assets/loom-embed.js"></script>
+<script src="/viva-biomodels/workbench/assets/composite-card.js"></script>
+<script src="/viva-biomodels/workbench/assets/checklist-select.js"></script>
+<script src="/viva-biomodels/workbench/assets/progress-track.js"></script>
+<script src="/viva-biomodels/workbench/assets/comparison-view.js"></script>
+<script src="/viva-biomodels/workbench/assets/study-detail.js"></script>
 <script>
 // Re-assert the refresh-aware seed handlers AFTER study-detail.js (which
 // defines its own navigate-away _seedFollowupStudy). The embedded
