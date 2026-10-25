@@ -179,7 +179,7 @@ wheels = [
 
 [[package]]
 name = "bigraph-schema"
-version = "1.7.0"
+version = "1.8.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -188,9 +188,9 @@ dependencies = [
     { name = "pint" },
     { name = "plum-dispatch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/11/81195272ac43485123ac486028da54ad3a6c74e81b76ad5565e85606eec4/bigraph_schema-1.7.0.tar.gz", hash = "sha256:ceb3c7d9c72eb8b3f9c42f1ced704b498b9e32fb7a28a4008922917a04bb48b6", size = 184929, upload-time = "2026-10-04T18:16:41.109Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/81/00e7e9b11f2486c39e3761fac70dc84401f3c555016d0969237729d50b16/bigraph_schema-1.8.2.tar.gz", hash = "sha256:561cedd73b03924a8272ee493afa6bcafddca2b3b4bfa237dd485e9c98702f9d", size = 186958, upload-time = "2026-10-22T01:19:14.282Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/ec/5386cd413066f6a5b1500a3599c9bd30c5e247b96a3f1f032b03325ae5a5/bigraph_schema-1.7.0-py3-none-any.whl", hash = "sha256:406a87bdd5d4f259b1082c820a45930643cda72969cc89719408a404efbae40d", size = 184400, upload-time = "2026-10-04T18:16:39.356Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/97/7cdd305196af6e14dcb692de687a098272b45d4de82db58dc89caf89bea9/bigraph_schema-1.8.2-py3-none-any.whl", hash = "sha256:128a667e1c13a598a8768858eb033f859f53314da8eeb0f2d5d01480d9f2b3be", size = 185861, upload-time = "2026-10-22T01:19:12.921Z" },
 ]
 
 [[package]]
@@ -2727,7 +2727,7 @@ wheels = [
 
 [[package]]
 name = "process-bigraph"
-version = "1.8.5"
+version = "1.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bigraph-schema" },
@@ -2738,9 +2738,9 @@ dependencies = [
     { name = "scipy" },
     { name = "sympy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/43/49/91c08f372e1fb03ffddbc50904db28603a95ff7c6536c321ce60a92eda9f/process_bigraph-1.8.5.tar.gz", hash = "sha256:96b19249c9fd7f2bf0239a85f65104ecdf29126810a327f1b82bd87b09f7d1ad", size = 235456, upload-time = "2026-09-30T13:51:08.571Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/20/3839eda23b5cc9687744ecce37ef32456e77804a027790a20c9a19c08639/process_bigraph-1.10.0.tar.gz", hash = "sha256:1dd5b2cbbd32024fb76c1b77f36b1c27cdb19bc5f7f73c2e7bdcd33cfef1dd8e", size = 263167, upload-time = "2026-10-22T01:38:41.865Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/9d/65d95bf42ba8e926006e754ec5627ad39ef70e622f05d281a0b8fe2c62ea/process_bigraph-1.8.5-py3-none-any.whl", hash = "sha256:16802ed4b4930adbfb437cd1e7f78a316f5bd4e08fecc792de38032fc1688aa9", size = 255434, upload-time = "2026-09-30T13:51:07.048Z" },
+    { url = "https://files.pythonhosted.org/packages/65/90/e66d6670cd3253e33abd910a89721cfa93d68d88c49e1aeec755333fdbb1/process_bigraph-1.10.0-py3-none-any.whl", hash = "sha256:3dc71a75f851eda518cff659837c4feabc5cab844f5a2011e9e6947a6b06ab3e", size = 284783, upload-time = "2026-10-22T01:38:40.104Z" },
 ]
 
 [[package]]
@@ -4467,7 +4467,7 @@ provides-extras = ["dev", "amici", "pysces", "scale"]
 [[package]]
 name = "viva-catalog"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-marketplace.git?branch=main#5ce48eba1977c3f7d7fc438b7bc8f3102b3a20e2" }
+source = { git = "https://github.com/vivarium-collective/viva-marketplace.git?rev=4e72e3b7f6c88d9683ae113a58e59bcafc5efb65#4e72e3b7f6c88d9683ae113a58e59bcafc5efb65" }
 
 [[package]]
 name = "viva-copasi"
@@ -4584,8 +4584,8 @@ dependencies = [
 
 [[package]]
 name = "vivarium-workbench"
-version = "0.4.0"
-source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#2f2dc5acdfb79effcb933269cf0d3a5579b94270" }
+version = "0.4.1"
+source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#e05708591c33cb32a2f8a71ca2d9b0ab4746b8d4" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "boto3" },
@@ -4595,6 +4595,7 @@ dependencies = [
     { name = "jsonschema", extra = ["format-nongpl"] },
     { name = "numpy" },
     { name = "process-bigraph" },
+    { name = "psutil" },
     { name = "pydantic" },
     { name = "pypdf" },
     { name = "pytest-json-report" },
