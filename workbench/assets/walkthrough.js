@@ -2294,12 +2294,24 @@
       window.open(_build3dSrc(m), '_blank', 'noopener');
     } else if (t.kind === 'embed-simularium') {
       window.open(_buildSimulariumSrc(m), '_blank', 'noopener');
-    } else if (m.href) {
-      window.open(m.href, '_blank', 'noopener');
     } else {
-      // Contributed launcher viewers are keyed by full uid (package::id) at the
-      // launch endpoint; t.id is the bare id, so prefer t.uid.
-      _launchViewer(t.uid || t.id, m.study || m.ref || '');  // resolves via endpoint / snapshot note
+      // Open the selected item's static export. A workspace-root-absolute href
+      // (/studies/…) MUST carry the hosting base path in the published snapshot,
+      // or it 404s to the domain root; an external (http/protocol-relative) href
+      // opens as-is. Mirrors the picker's _openHref + sim-table.toolsCell. Fall
+      // back to any target's static href before the live launch endpoint so a
+      // launcher whose selected item lacks an href (but whose pack IS baked)
+      // opens in the read-only snapshot instead of hitting the "local only" note.
+      var _bp = window.__BASE_PATH__ || (window.__DASH_CONFIG__ && window.__DASH_CONFIG__.basePath) || '';
+      var _rawHref = m.href || (((t.targets || []).filter(function (x) { return x && x.href; })[0]) || {}).href;
+      if (_rawHref) {
+        window.open(/^https?:|^\/\//.test(_rawHref) ? _rawHref : (_bp + _rawHref), '_blank', 'noopener');
+      } else {
+        // Live-only launcher (no baked export): keyed by full uid (package::id)
+        // at the launch endpoint; t.id is the bare id, so prefer t.uid. The
+        // snapshot shows a "launch locally" note rather than calling a 404.
+        _launchViewer(t.uid || t.id, m.study || m.ref || '');
+      }
     }
   }
   window._openTool = _openTool;
@@ -2354,6 +2366,7 @@
   // active workspace ships the manifest, so it's purely additive.
 
   var _RES_TYPE_LABEL = {
+    'sbml-model':       'SBML models',
     'lipid-structure':  'Lipid structures',
     'reaction-pathway': 'Reaction pathways',
     'evidence-dataset': 'Evidence datasets',
@@ -2770,8 +2783,31 @@
       _resRefChips(r.references, refsById) + '</div>';
   }
 
+  // sbml-model → count chips, source, used-by study chips, and the FULL
+  // Antimony in a scrollable monospace block (large multi-organ models scroll
+  // instead of blowing out the card).
+  function _resModelCard(r, refsById) {
+    var chips = [];
+    if (_resV(r.n_species)) chips.push('<span class="res-tag">' + _esc(_resV(r.n_species)) + ' species</span>');
+    if (_resV(r.n_reactions)) chips.push('<span class="res-tag">' + _esc(_resV(r.n_reactions)) + ' reactions</span>');
+    var counts = chips.length ? '<div class="res-tags">' + chips.join(' ') + '</div>' : '';
+    var usedBy = (r.used_by && r.used_by.length)
+      ? '<div class="res-kv"><span class="res-kv-k">Used by</span><span class="res-kv-v">' +
+        r.used_by.map(_resStudyChip).join(' ') + '</span></div>'
+      : '';
+    var antimony = _resV(r.antimony)
+      ? '<pre class="res-antimony" style="max-height:28em;overflow:auto;margin:.5em 0 0;padding:.6em .8em;' +
+        'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8em;line-height:1.4;' +
+        'white-space:pre;background:rgba(127,127,127,.1);border-radius:4px;">' + _esc(String(r.antimony)) + '</pre>'
+      : '';
+    return '<div class="res-card res-model">' + _resCardHead(r) + counts +
+      '<div class="res-kv-grid">' + _resKV('Source', r.source) + '</div>' +
+      usedBy + antimony + '</div>';
+  }
+
   function _resRenderCard(r, refsById) {
     switch (r.type) {
+      case 'sbml-model':       return _resModelCard(r, refsById);
       case 'lipid-structure':  return _resLipidCard(r, refsById);
       case 'reaction-pathway': return _resPathwayCard(r, refsById);
       case 'evidence-dataset': return _resEvidenceCard(r, refsById);
