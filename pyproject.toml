@@ -94,7 +94,13 @@ viva-basic-processes = { git = "https://github.com/vivarium-collective/viva-basi
 # workbench were renamed to viva-*; simbio/amici/pysces keep their pbg-* dist name
 # even though their repos/dirs are now viva-*.
 vivarium-workbench = { git = "https://github.com/vivarium-collective/vivarium-workbench.git", branch = "main" }
-viva-tellurium = { git = "https://github.com/vivarium-collective/viva-tellurium.git", branch = "main" }
+# Pinned (not branch=main): viva-tellurium #26 (82e911d2) made the species port a
+# bulk Array by default, which flows an ndarray into this workspace's maybe[...]
+# coupling port; bigraph-schema's realize(Maybe) does `encode != NONE_SYMBOL` and
+# raises "truth value of an array is ambiguous". Pin to the last pre-bulk-default
+# rev until the upstream realize(Maybe) array handling is fixed and this can float
+# on main again.
+viva-tellurium = { git = "https://github.com/vivarium-collective/viva-tellurium.git", rev = "047e703968f37d106e9bc7f429bc05d804be60fe" }
 viva-copasi = { git = "https://github.com/vivarium-collective/viva-copasi.git", branch = "main" }
 viva-simbio = { git = "https://github.com/vivarium-collective/viva-simbio.git", branch = "main" }
 viva-amici = { git = "https://github.com/vivarium-collective/viva-amici.git", branch = "main" }
