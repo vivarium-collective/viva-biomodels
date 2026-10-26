@@ -4459,7 +4459,7 @@ requires-dist = [
     { name = "viva-emitters", extras = ["parquet-lite"], git = "https://github.com/vivarium-collective/viva-emitters.git?branch=main" },
     { name = "viva-pysces", marker = "extra == 'pysces'", git = "https://github.com/vivarium-collective/viva-pysces.git?branch=main" },
     { name = "viva-simbio", git = "https://github.com/vivarium-collective/viva-simbio.git?branch=main" },
-    { name = "viva-tellurium", git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main" },
+    { name = "viva-tellurium", git = "https://github.com/vivarium-collective/viva-tellurium.git?rev=047e703968f37d106e9bc7f429bc05d804be60fe" },
     { name = "vivarium-workbench", extras = ["chat"], git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main" },
 ]
 provides-extras = ["dev", "amici", "pysces", "scale"]
@@ -4564,7 +4564,7 @@ evaluator = [
 [[package]]
 name = "viva-tellurium"
 version = "0.1.2"
-source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main#5bcb6b47e1b4c558e4a408afb7050c6e43931886" }
+source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?rev=047e703968f37d106e9bc7f429bc05d804be60fe#047e703968f37d106e9bc7f429bc05d804be60fe" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "numpy" },
