@@ -43,7 +43,7 @@ _SIMULATORS: Dict[str, SimulatorSpec] = {
         "utc_step": "local:viva_biomodels.steps.simulators.BiomodelsTelluriumStep",
         "steady_state_step": "local:viva_biomodels.steps.simulators.BiomodelsTelluriumSteadyStateStep",
         "process": "local:TelluriumProcess",
-        "process_config": lambda sbml: {"model_file": sbml},
+        "process_config": lambda sbml: {"model_file": sbml, "bulk_species": False},
         "species_out": "species",
     },
     "simbio": {

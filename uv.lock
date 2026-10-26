@@ -1750,24 +1750,28 @@ wheels = [
 
 [[package]]
 name = "libroadrunner"
-version = "2.10.0"
+version = "2.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/47/79bfe7d8ba017be1f6f29e96cbc0c6611b4590a658548e9fe72e44fd470a/libroadrunner-2.10.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:66f61f8ed7c40600895d2c8250e8515e25dc7648f5681a6e6a2e988701701e2a", size = 34214767, upload-time = "2026-08-05T06:04:27.549Z" },
-    { url = "https://files.pythonhosted.org/packages/d5/6a/2b233cefae857bccf94f4d2f2f506824df8287658454e40f767932c7a714/libroadrunner-2.10.0-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:86639245bf6431d88e8f9cea52cdfb4fd6746ce14d867b691fa93014f005021f", size = 36622620, upload-time = "2026-08-05T06:04:30.583Z" },
-    { url = "https://files.pythonhosted.org/packages/36/91/b90186ffd04d487259dbed53610607fbc37502121a4584f8839a6af94f10/libroadrunner-2.10.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:fa87d7a9f1509f3ce14bfb61ae78eed1ad710e7ea5190d611b76323b425ae5b4", size = 51165130, upload-time = "2026-08-05T06:04:33.744Z" },
-    { url = "https://files.pythonhosted.org/packages/f4/4d/167adc6f98197200831eae270393f2bc9c6e63e0b7c8a518240ea7ad9af6/libroadrunner-2.10.0-cp312-cp312-win_amd64.whl", hash = "sha256:625be1c567f252bd635dd2810e7db82ac8b248b72d0ea56725110eab30b88d3b", size = 24421965, upload-time = "2026-08-05T06:04:36.533Z" },
-    { url = "https://files.pythonhosted.org/packages/b0/4c/5be26c0ad6c9e306a99a41640ec0ef10b01930be3382028faa90f4ae2432/libroadrunner-2.10.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:f3204b7f0ee207e9d4d8abad0910d5bd2ebb760051c9a864a621f23003a4ee86", size = 34201906, upload-time = "2026-08-05T06:04:39.596Z" },
-    { url = "https://files.pythonhosted.org/packages/94/8b/f800ab9769c989e4d76129a5a5cfee4d22e8f0d8439f02f34aa4b8e849b3/libroadrunner-2.10.0-cp313-cp313-macosx_15_0_x86_64.whl", hash = "sha256:01080024d2aa579cff9b0245dd357669a1d50d57716b3fd5ecb12ed382f7eca5", size = 36620959, upload-time = "2026-08-05T06:04:42.342Z" },
-    { url = "https://files.pythonhosted.org/packages/72/c8/45b1849e48cd83a0e0cec9082e90cd97df7da3232362d320f693e5e3747f/libroadrunner-2.10.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:9efc3571fa422dd014d90090150f1baf051863e8f67eece023e6181728d633dd", size = 51162468, upload-time = "2026-08-05T06:04:45.19Z" },
-    { url = "https://files.pythonhosted.org/packages/0a/c9/0c84e343096f5f2b1ab321d712f023f1159b18c263da9313b96ae57ce202/libroadrunner-2.10.0-cp313-cp313-win_amd64.whl", hash = "sha256:b881b6db0d0c92ddf62bd3a95c355d1c0fbbcc683a06f2430e43fdec3fe1875b", size = 24420971, upload-time = "2026-08-05T06:04:47.894Z" },
-    { url = "https://files.pythonhosted.org/packages/1e/40/2d2a221bef074ff54f445c3518781e3e6d2f8f4d82ae03e58df951cffcb6/libroadrunner-2.10.0-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:11ce888d5f2fc396a45c885aa647d6cda49cd678848387d8323e8e588c759831", size = 34203182, upload-time = "2026-08-05T06:04:50.915Z" },
-    { url = "https://files.pythonhosted.org/packages/94/5f/b55c2a54132d1e2907e880b07259122a2845a08c56a3458c69c8857564b9/libroadrunner-2.10.0-cp314-cp314-macosx_15_0_x86_64.whl", hash = "sha256:04f1fb5aeace59514a4a10d869acd1bd88c6a9f597f140f18ebd31e67afc485d", size = 36621769, upload-time = "2026-08-05T06:04:53.747Z" },
-    { url = "https://files.pythonhosted.org/packages/17/4e/86592cbba7f6b493aaf8f64849a500464402231e86a9866428fafdb38664/libroadrunner-2.10.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:3481b6c2aa8030e3c35419b216b1036e4c1aee75e2083716353ebc863aced620", size = 51163285, upload-time = "2026-08-05T06:04:56.869Z" },
-    { url = "https://files.pythonhosted.org/packages/d5/64/4c14a855490980d6b7803084778725ac377b388539c8fb4fc8a4c3cf2eba/libroadrunner-2.10.0-cp314-cp314-win_amd64.whl", hash = "sha256:b4d54bc51c78e5be673f1ccc64ee1596125600c4745abcea789e446db7022479", size = 25067406, upload-time = "2026-08-05T06:04:59.631Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/7d/c631e0f04bf1195c6dfca93b91f11db12cc0e0dee9a456df01c53bdc93ec/libroadrunner-2.11.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:50c286be19ea4aee53db6ed359b0fd87738a2661c170bb07832c2186f010108d", size = 34264862, upload-time = "2026-10-21T20:52:22.058Z" },
+    { url = "https://files.pythonhosted.org/packages/88/15/f143bb61bbf27532dfee01799dc5418fad9b0f9390cf2e9be39441cf74c4/libroadrunner-2.11.0-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:5ab524c8964200d482f068bda44d446c555e4d7d0278e872d2927e4a54b05854", size = 36670198, upload-time = "2026-10-21T20:52:25.553Z" },
+    { url = "https://files.pythonhosted.org/packages/41/21/1e556f8cdd74a2fcfa8c8287c3dd8141be260594d7ed38968af7f452bc2f/libroadrunner-2.11.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:bc8736c90bdfaa98d52311bdda6a133aaaa919085473e0b6d4ae59984dd236be", size = 50798266, upload-time = "2026-10-21T20:52:28.608Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/16/93b747fda29dd15171832a595f9145d1292528a865cc3156670f99d8c94f/libroadrunner-2.11.0-cp312-cp312-win_amd64.whl", hash = "sha256:5713ac61d37556853c433c3ef285108b5860539ed1773770be9f0ecf83823632", size = 25092542, upload-time = "2026-10-21T20:52:31.721Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/5f/0c220c0490cfbaa37626af9c166a261310fafa2a60902d7af0f603637edd/libroadrunner-2.11.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:8dcca85b111242e50c0c892ab20059a0abf7a4bd8c8dc830fe4f969d91a8aafe", size = 34248134, upload-time = "2026-10-21T20:52:34.516Z" },
+    { url = "https://files.pythonhosted.org/packages/85/4d/ad36c7b94ac7d481a511baa6e0c473e2f8b188f16a9873df4c3f38d00933/libroadrunner-2.11.0-cp313-cp313-macosx_15_0_x86_64.whl", hash = "sha256:7ecf2e64d8f2788d2354d0b75fbfc479abbdec8b7704b58f99cfb5fb50a44d04", size = 36669042, upload-time = "2026-10-21T20:52:37.429Z" },
+    { url = "https://files.pythonhosted.org/packages/71/11/73cf8e5e5e412d6be4aa1097eb1a148c741237cb3b6f66338ebfe7271ada/libroadrunner-2.11.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:067f4807644f77811d076823d1b463e4ebfc318c76b3b1a975fea39884dc1697", size = 50797625, upload-time = "2026-10-21T20:52:40.377Z" },
+    { url = "https://files.pythonhosted.org/packages/41/44/9d68deb109ddf702bc94d37fcd3940f2346627744f944204fce4cfa7f63c/libroadrunner-2.11.0-cp313-cp313-win_amd64.whl", hash = "sha256:b50cd9dfdf87ee06ddfd7dc4ae56187a25b89daed3ed8150b8f86ce595ab76d9", size = 24438797, upload-time = "2026-10-21T20:52:42.984Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/ff/0b8697209c0e3fffbaa073381f889694e0829b1c61c4e0c7c3a8a449a677/libroadrunner-2.11.0-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:92681aa02754011ed278c1bf615def29892b63cc6b8b847db9cd06ab2df46305", size = 34248072, upload-time = "2026-10-21T20:52:45.487Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/dd/2fc627334ca81108333a26bc2a3c407776efb0521b7af91dcab8105a342b/libroadrunner-2.11.0-cp314-cp314-macosx_15_0_x86_64.whl", hash = "sha256:13a82c947c71062488f8f3077c81b815d0c9c1b7d29371a20e20b8254a43e96b", size = 36670141, upload-time = "2026-10-21T20:52:48.434Z" },
+    { url = "https://files.pythonhosted.org/packages/30/f7/ee15827115ebe0f9a8a811f05f74f6de012356879618a837734215a2d575/libroadrunner-2.11.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:87e8f7b8977c0f704d38d515fbf4830667d110f1552a55bf44c14bd26344e358", size = 50797691, upload-time = "2026-10-21T20:52:51.489Z" },
+    { url = "https://files.pythonhosted.org/packages/15/74/9d97217fd269255768efebfafe9a3f66d0bd5a028373abee09eada0c3d44/libroadrunner-2.11.0-cp314-cp314-win_amd64.whl", hash = "sha256:2e553a3261227b274fad304995a900b062bb4743062bf57cdccc6a1b0f596d53", size = 25100087, upload-time = "2026-10-21T20:52:54.277Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/16/86e2c9835202c7d36736521af6fab51b1617de21123a2b9db52751f5c128/libroadrunner-2.11.0-cp315-cp315-macosx_14_0_arm64.whl", hash = "sha256:bf7b8b268bbe85d303ffb5a0c0d55c5968cc9020772bafe28f7819b7124c231b", size = 34247995, upload-time = "2026-10-21T20:52:56.82Z" },
+    { url = "https://files.pythonhosted.org/packages/47/0d/078e6f80aa4af943e28f439b3460fa2a33e27ed8c45b488378cd29759616/libroadrunner-2.11.0-cp315-cp315-macosx_15_0_x86_64.whl", hash = "sha256:1ce06db6b18573b97d2fcc7a8b963f704cf49ffb4038e4a433504d64c2660ee5", size = 36670231, upload-time = "2026-10-21T20:53:00.309Z" },
+    { url = "https://files.pythonhosted.org/packages/87/b0/8323be66accd699fb40a4cb68b64de52bdbfd180b44e146881abd5b79765/libroadrunner-2.11.0-cp315-cp315-manylinux_2_28_x86_64.whl", hash = "sha256:c17824289dcc2e38b17610a91f5c0b3f464d501a027e87dd6c2325c9bcbd5d6e", size = 50797878, upload-time = "2026-10-21T20:53:03.66Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/e9/d8ef2eb3ba4f59025c1647b12bbf62cefee4a6233315f7c8fec344b02e6a/libroadrunner-2.11.0-cp315-cp315-win_amd64.whl", hash = "sha256:81ffdeadd3677ca8f514adda1b8acb4729e26277c0abf1ebd6ea09e8ac5e4e33", size = 25100161, upload-time = "2026-10-21T20:53:06.268Z" },
 ]
 
 [[package]]
@@ -4360,7 +4364,7 @@ wheels = [
 [[package]]
 name = "viva-amici"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-amici.git?branch=main#7ab0413e43bccd8db5b391acc9a112d5d254157e" }
+source = { git = "https://github.com/vivarium-collective/viva-amici.git?branch=main#bd339a5ef0fd0afe1e62b3f865a0dcc9cd15756a" }
 dependencies = [
     { name = "amici" },
     { name = "antimony", version = "2.14.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
@@ -4459,7 +4463,7 @@ requires-dist = [
     { name = "viva-emitters", extras = ["parquet-lite"], git = "https://github.com/vivarium-collective/viva-emitters.git?branch=main" },
     { name = "viva-pysces", marker = "extra == 'pysces'", git = "https://github.com/vivarium-collective/viva-pysces.git?branch=main" },
     { name = "viva-simbio", git = "https://github.com/vivarium-collective/viva-simbio.git?branch=main" },
-    { name = "viva-tellurium", git = "https://github.com/vivarium-collective/viva-tellurium.git?rev=047e703968f37d106e9bc7f429bc05d804be60fe" },
+    { name = "viva-tellurium", git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main" },
     { name = "vivarium-workbench", extras = ["chat"], git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main" },
 ]
 provides-extras = ["dev", "amici", "pysces", "scale"]
@@ -4472,7 +4476,7 @@ source = { git = "https://github.com/vivarium-collective/viva-marketplace.git?re
 [[package]]
 name = "viva-copasi"
 version = "0.1.2"
-source = { git = "https://github.com/vivarium-collective/viva-copasi.git?branch=main#96ad8eac1454d38295fdec185753c3afea3b7d8a" }
+source = { git = "https://github.com/vivarium-collective/viva-copasi.git?branch=main#da5384f84e0176a1bb363f689ac015ead5d0fdb5" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "copasi-basico" },
@@ -4516,7 +4520,7 @@ xarray = [
 [[package]]
 name = "viva-pysces"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-pysces.git?branch=main#10900e391e4bd0f1eb91b880fb79865df3676f31" }
+source = { git = "https://github.com/vivarium-collective/viva-pysces.git?branch=main#041d4064822d44a0692592fc4fc8fd567b33191f" }
 dependencies = [
     { name = "process-bigraph" },
     { name = "pysces" },
@@ -4526,7 +4530,7 @@ dependencies = [
 [[package]]
 name = "viva-simbio"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-simbio.git?branch=main#41e3d5caa88e2c23c416ed25dabd93e2a67e0e95" }
+source = { git = "https://github.com/vivarium-collective/viva-simbio.git?branch=main#ebecf1fb352e81d56f1446df689c0c1cca076d81" }
 dependencies = [
     { name = "antimony", version = "2.14.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
     { name = "antimony", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'aarch64' or sys_platform != 'linux'" },
@@ -4540,8 +4544,8 @@ dependencies = [
 
 [[package]]
 name = "viva-superpowers"
-version = "0.23.0"
-source = { git = "https://github.com/vivarium-collective/viva-superpowers.git?branch=main#806c6862c387b77f7e7317f97913a4c884dce142" }
+version = "0.24.0"
+source = { git = "https://github.com/vivarium-collective/viva-superpowers.git?branch=main#d2867783f413265b3d89e26a07240458f3b32cc5" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "click" },
@@ -4549,6 +4553,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "jsonschema", extra = ["format-nongpl"] },
     { name = "process-bigraph" },
+    { name = "psutil" },
     { name = "pypdf" },
     { name = "pyyaml" },
     { name = "ruamel-yaml" },
@@ -4564,9 +4569,10 @@ evaluator = [
 [[package]]
 name = "viva-tellurium"
 version = "0.1.2"
-source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?rev=047e703968f37d106e9bc7f429bc05d804be60fe#047e703968f37d106e9bc7f429bc05d804be60fe" }
+source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main#ea53e8ce20d3278cef60662ac52e1572d9b205ec" }
 dependencies = [
     { name = "bigraph-schema" },
+    { name = "libroadrunner" },
     { name = "numpy" },
     { name = "process-bigraph" },
     { name = "pyyaml" },
@@ -4585,7 +4591,7 @@ dependencies = [
 [[package]]
 name = "vivarium-workbench"
 version = "0.4.1"
-source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#e05708591c33cb32a2f8a71ca2d9b0ab4746b8d4" }
+source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#e490eb1fa4a38254adcbe1e4146089a30732248f" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "boto3" },
