@@ -1023,6 +1023,12 @@
   
   <div id="results-summary" data-study="repeat-matching" style="margin:0 0 16px"></div>
 
+  
+  <div id="gate-results-section" data-study="repeat-matching" style="margin:0 0 22px" hidden>
+    <h4>Gate results <span class="muted" style="font-size:0.8em;font-weight:normal">— each acceptance test's value, graded from run data</span></h4>
+    <div id="gate-results"></div>
+  </div>
+
   <h4>Latest run preview <span class="muted" style="font-size:0.8em;font-weight:normal">— downsampled sparkline + first/last/min/max per store</span></h4>
   <div id="results-preview" data-study="repeat-matching">
     <div class="viv-loading"><span class="viv-loading-spin" aria-hidden="true"></span><span>Loading results preview…</span></div>
@@ -1481,7 +1487,7 @@ pass_if: {"op": "at_least", "provenance": {"kind": "calibration", "note": "8/12 
 </section>
 
 </main>
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/workbench", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "5a01315e37a26f727b876bff52c80a2bed4ee587", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/5a01315e37a26f727b876bff52c80a2bed4ee587", "branch": "main", "lockfile": "uv.lock@14ea255d6c1a", "generated_at": "2026-10-28 01:23 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/workbench", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "5a01315e37a26f727b876bff52c80a2bed4ee587", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/5a01315e37a26f727b876bff52c80a2bed4ee587", "branch": "main", "lockfile": "uv.lock@14ea255d6c1a", "generated_at": "2026-10-28 22:27 UTC"} };</script>
 <script src="/viva-biomodels/workbench/assets/data-source.js"></script>
 <script src="/viva-biomodels/workbench/assets/toast.js"></script>
 <script>
