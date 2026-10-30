@@ -20,7 +20,7 @@
   <div style="display:flex; align-items:center; gap:14px; justify-content:space-between;">
   <div style="display:flex; align-items:center; gap:12px; min-width:0; flex-wrap:wrap">
   <h1 class="study-title" style="margin:0">
-    <span class="study-name" id="study-name" data-slug="repeat-matching" data-study-kind="computational" title="repeat-matching">Repeat- and reproducibility-matching vs the BioSimulators reference study</span>
+    <span class="study-name" id="study-name" data-slug="repeat-matching" data-study-kind="computational" title="repeat-matching" data-edit-kind="study" data-edit-field="title" data-edit-value="Repeat- and reproducibility-matching vs the BioSimulators reference study" data-edit-label="Title">Repeat- and reproducibility-matching vs the BioSimulators reference study</span>
     
   </h1>
     
@@ -553,9 +553,11 @@
     <div class="ctr-block">
       <h2 class="overview-label ctr-h">Background</h2>
       <div class="ctr-meta">
-        <div class="ctr-meta-row"><span class="ctr-meta-k">Question</span> <span class="ctr-meta-item">Do the current cross-simulator BioModels runs reproduce the BioSimulators SED-ML reference results engine-for-engine (repeat matching), and where they diverge, can any previous cross-engine open questions be closed (reproducibility matching)?
+        <div class="ctr-meta-row"><span class="ctr-meta-k">Question</span> <span class="ctr-meta-item" data-edit-kind="study" data-edit-field="question" data-edit-value="Do the current cross-simulator BioModels runs reproduce the BioSimulators SED-ML reference results engine-for-engine (repeat matching), and where they diverge, can any previous cross-engine open questions be closed (reproducibility matching)?
+" data-edit-multiline data-edit-label="Question">Do the current cross-simulator BioModels runs reproduce the BioSimulators SED-ML reference results engine-for-engine (repeat matching), and where they diverge, can any previous cross-engine open questions be closed (reproducibility matching)?
 </span></div>
-        <div class="ctr-meta-row"><span class="ctr-meta-k">Hypothesis</span> <span class="ctr-meta-item">Where an observable is computed at all, the current study reproduces the previous study exactly; the dominant failure mode is coverage (missing SED-ML dataGenerator observables) rather than numerical divergence. Each recovered reproducibility match — especially bringing simbio, the new engine, onto the engines that already agree — is worth 10x a broken repeat match.
+        <div class="ctr-meta-row"><span class="ctr-meta-k">Hypothesis</span> <span class="ctr-meta-item" data-edit-kind="study" data-edit-field="hypothesis" data-edit-value="Where an observable is computed at all, the current study reproduces the previous study exactly; the dominant failure mode is coverage (missing SED-ML dataGenerator observables) rather than numerical divergence. Each recovered reproducibility match — especially bringing simbio, the new engine, onto the engines that already agree — is worth 10x a broken repeat match.
+" data-edit-multiline data-edit-label="Hypothesis">Where an observable is computed at all, the current study reproduces the previous study exactly; the dominant failure mode is coverage (missing SED-ML dataGenerator observables) rather than numerical divergence. Each recovered reproducibility match — especially bringing simbio, the new engine, onto the engines that already agree — is worth 10x a broken repeat match.
 </span></div>
       </div>
     </div>
@@ -563,7 +565,8 @@
 
     <div class="ctr-block">
       <h2 class="overview-label ctr-h">Model &amp; approach</h2>
-      <p class="ctr-text">Run the BioModels validation subset under the live engines (COPASI, Tellurium, simbio, AMICI, PySCeS) plus the BioSimulators SED-ML reference arm, score repeat-match (live X vs reference X) and reproducibility-match (cross-engine) with numpy allclose, iterate the observable-coverage fixes, and report every remaining mismatch with analysis.
+      <p class="ctr-text" data-edit-kind="study" data-edit-field="objective" data-edit-value="Run the BioModels validation subset under the live engines (COPASI, Tellurium, simbio, AMICI, PySCeS) plus the BioSimulators SED-ML reference arm, score repeat-match (live X vs reference X) and reproducibility-match (cross-engine) with numpy allclose, iterate the observable-coverage fixes, and report every remaining mismatch with analysis.
+" data-edit-multiline data-edit-label="Objective">Run the BioModels validation subset under the live engines (COPASI, Tellurium, simbio, AMICI, PySCeS) plus the BioSimulators SED-ML reference arm, score repeat-match (live X vs reference X) and reproducibility-match (cross-engine) with numpy allclose, iterate the observable-coverage fixes, and report every remaining mismatch with analysis.
 </p>
       <div class="ctr-meta">
         <div class="ctr-meta-row"><span class="ctr-meta-k">Model</span> <code>repeat-matching</code><a class="ov-tablink" href="#" onclick="_setStudyTab('compose');return false;">model →</a></div>
@@ -601,7 +604,8 @@
         <details class="finding-details">
           <summary class="finding-row">
             <span class="finding-status-glyph">◆</span>
-            <span class="finding-claim finding-statement">After the iteration-2 coverage fix, every repeat arm reproduces the BioSimulators reference exactly: 12/12 arms have matched == total under numpy allclose, with zero numerical mismatches.
+            <span class="finding-claim finding-statement" data-edit-kind="study" data-edit-field="findings[F-01].statement" data-edit-value="After the iteration-2 coverage fix, every repeat arm reproduces the BioSimulators reference exactly: 12/12 arms have matched == total under numpy allclose, with zero numerical mismatches.
+" data-edit-multiline data-edit-label="Finding F-01">After the iteration-2 coverage fix, every repeat arm reproduces the BioSimulators reference exactly: 12/12 arms have matched == total under numpy allclose, with zero numerical mismatches.
 </span>
             
             <span class="finding-chip">via <code>repeat-arms-match-reference</code></span>
@@ -657,7 +661,8 @@
         <details class="finding-details">
           <summary class="finding-row">
             <span class="finding-status-glyph">◆</span>
-            <span class="finding-claim finding-statement">The residual failures are coverage, not numerics: iteration 1 left 17/48 reference observables uncomputed on BIOMD1-2; iteration 2 closed that to 0 there and 2 on BIOMD3 (SED-ML dataGenerator forms not yet supported). This confirms the hypothesis that the dominant failure mode is missing observables rather than divergent trajectories.
+            <span class="finding-claim finding-statement" data-edit-kind="study" data-edit-field="findings[F-02].statement" data-edit-value="The residual failures are coverage, not numerics: iteration 1 left 17/48 reference observables uncomputed on BIOMD1-2; iteration 2 closed that to 0 there and 2 on BIOMD3 (SED-ML dataGenerator forms not yet supported). This confirms the hypothesis that the dominant failure mode is missing observables rather than divergent trajectories.
+" data-edit-multiline data-edit-label="Finding F-02">The residual failures are coverage, not numerics: iteration 1 left 17/48 reference observables uncomputed on BIOMD1-2; iteration 2 closed that to 0 there and 2 on BIOMD3 (SED-ML dataGenerator forms not yet supported). This confirms the hypothesis that the dominant failure mode is missing observables rather than divergent trajectories.
 </span>
             
             <span class="finding-chip">via <code>observable-coverage-closed</code></span>
@@ -713,7 +718,8 @@
         <details class="finding-details">
           <summary class="finding-row">
             <span class="finding-status-glyph">◆</span>
-            <span class="finding-claim finding-statement">Cross-engine reproducibility is exact where observables overlap: 22/30 iter2 pairs match fully. The 8 residuals are understood — pysces computes 2/65 observables differently from copasi/tellurium/amici on BIOMD1, and simbio exposes a reduced 48-observable set (those 48 all agree). simbio, the new engine, lands on the engines that already agree.
+            <span class="finding-claim finding-statement" data-edit-kind="study" data-edit-field="findings[F-03].statement" data-edit-value="Cross-engine reproducibility is exact where observables overlap: 22/30 iter2 pairs match fully. The 8 residuals are understood — pysces computes 2/65 observables differently from copasi/tellurium/amici on BIOMD1, and simbio exposes a reduced 48-observable set (those 48 all agree). simbio, the new engine, lands on the engines that already agree.
+" data-edit-multiline data-edit-label="Finding F-03">Cross-engine reproducibility is exact where observables overlap: 22/30 iter2 pairs match fully. The 8 residuals are understood — pysces computes 2/65 observables differently from copasi/tellurium/amici on BIOMD1, and simbio exposes a reduced 48-observable set (those 48 all agree). simbio, the new engine, lands on the engines that already agree.
 </span>
             
             <span class="finding-chip">via <code>repeat-arms-match-reference</code></span>
@@ -1487,7 +1493,7 @@ pass_if: {"op": "at_least", "provenance": {"kind": "calibration", "note": "8/12 
 </section>
 
 </main>
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/workbench", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "5a01315e37a26f727b876bff52c80a2bed4ee587", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/5a01315e37a26f727b876bff52c80a2bed4ee587", "branch": "main", "lockfile": "uv.lock@14ea255d6c1a", "generated_at": "2026-10-30 12:23 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biomodels", basePath: "/viva-biomodels/workbench", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biomodels/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biomodels", "repo_url": "https://github.com/vivarium-collective/viva-biomodels", "commit": "5a01315e37a26f727b876bff52c80a2bed4ee587", "commit_url": "https://github.com/vivarium-collective/viva-biomodels/commit/5a01315e37a26f727b876bff52c80a2bed4ee587", "branch": "main", "lockfile": "uv.lock@14ea255d6c1a", "generated_at": "2026-10-30 13:14 UTC"} };</script>
 <script src="/viva-biomodels/workbench/assets/data-source.js"></script>
 <script src="/viva-biomodels/workbench/assets/toast.js"></script>
 <script>
@@ -1622,6 +1628,7 @@ window._seedFollowupProposal = _seedFollowupProposal;
 <script src="/viva-biomodels/workbench/assets/comparison-view.js"></script>
 <script src="/viva-biomodels/workbench/assets/study-detail.js"></script>
 <script src="/viva-biomodels/workbench/assets/study-feedback.js"></script>
+<script src="/viva-biomodels/workbench/assets/inline-edit.js"></script>
 <script>
 // Re-assert the refresh-aware seed handlers AFTER study-detail.js (which
 // defines its own navigate-away _seedFollowupStudy). The embedded
