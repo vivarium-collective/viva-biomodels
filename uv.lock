@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'aarch64' and sys_platform == 'linux'",
@@ -794,6 +794,29 @@ wheels = [
 ]
 
 [[package]]
+name = "discovery-engine"
+version = "0.1.0"
+source = { git = "https://github.com/vivarium-collective/discovery-engine.git?branch=main#e68ba10012f5a352e27dc840d886032ce0a698a3" }
+dependencies = [
+    { name = "bigraph-schema" },
+    { name = "click" },
+    { name = "filelock" },
+    { name = "jinja2" },
+    { name = "jsonschema", extra = ["format-nongpl"] },
+    { name = "numpy" },
+    { name = "polars" },
+    { name = "process-bigraph" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "ruamel-yaml" },
+    { name = "scipy" },
+    { name = "typer" },
+    { name = "viva-emitters", extra = ["parquet"] },
+    { name = "viva-workspace" },
+]
+
+[[package]]
 name = "distro"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1210,8 +1233,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -2493,7 +2516,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "ptyprocess" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -3761,8 +3784,8 @@ name = "rrplugins"
 version = "2.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "matplotlib", marker = "sys_platform == 'win32'" },
-    { name = "numpy", marker = "sys_platform == 'win32'" },
+    { name = "matplotlib" },
+    { name = "numpy" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/aa/04/36319798cabfd0892da6cb96571c104c5f6d8088739e9fa84345c05ad1ec/rrplugins-2.10.0-cp312-cp312-win_amd64.whl", hash = "sha256:76bd30851af400bbc2f607a60a18d2b608eb4322c854e41392925172da397f76", size = 15215941, upload-time = "2026-08-05T06:05:18.828Z" },
@@ -3892,8 +3915,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "jeepney", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "cryptography" },
+    { name = "jeepney" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
@@ -3921,6 +3944,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/85/d8/fc143f88819ccf10ba2388ba86732ee2de193e578234e25a783f6cc14bf7/setuptools_scm-10.3.4.tar.gz", hash = "sha256:a69f28bfc245608781205e912faae437c2b2165773afa4e7b979d77447a69dd2", size = 78410, upload-time = "2026-09-23T19:21:42.95Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/da/f5/54538a1f17ea753c42b0928dc2e62986d463f8c393340b9a1e602f2d4dd9/setuptools_scm-10.3.4-py3-none-any.whl", hash = "sha256:82f34c3e3084fc2b57d397200637cc13f2338004052d2fee47baa5f0e902464e", size = 33366, upload-time = "2026-09-23T19:21:41.607Z" },
+]
+
+[[package]]
+name = "shellingham"
+version = "1.5.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
 ]
 
 [[package]]
@@ -4270,6 +4302,21 @@ wheels = [
 ]
 
 [[package]]
+name = "typer"
+version = "0.27.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "rich" },
+    { name = "shellingham" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/03/51/d33db42cc72ffd8c30777547b42d01f0cbf9d95a770457698d0174b3ed71/typer-0.27.3.tar.gz", hash = "sha256:d0396f770a560ab1b0a8504e13b5f254b728cedb05c61cf0359e944e50ce8901", size = 205303, upload-time = "2026-10-06T17:24:16.61Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/ea/2e31b67051e91a133189e9c000c222502ddc6969856416de0d095de4c0b0/typer-0.27.3-py3-none-any.whl", hash = "sha256:e50022f28b82a86313e54501317a1db64bf8f8d036ff8cfe5ca7e47675454aff", size = 123312, upload-time = "2026-10-06T17:24:15.054Z" },
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4364,7 +4411,7 @@ wheels = [
 [[package]]
 name = "viva-amici"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-amici.git?branch=main#bd339a5ef0fd0afe1e62b3f865a0dcc9cd15756a" }
+source = { git = "https://github.com/vivarium-collective/viva-amici.git?branch=main#fafe216ef82666494e98a844ae36fe4c88a25dd7" }
 dependencies = [
     { name = "amici" },
     { name = "antimony", version = "2.14.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
@@ -4385,8 +4432,8 @@ dependencies = [
 
 [[package]]
 name = "viva-basic-processes"
-version = "0.2.0"
-source = { git = "https://github.com/vivarium-collective/viva-basic-processes.git?branch=main#3f7d64ee06337c8887d8db6d47b0bdfc6dea0093" }
+version = "0.3.0"
+source = { git = "https://github.com/vivarium-collective/viva-basic-processes.git?branch=main#9a1a624dc925cf700c3f89a8cc008a8fa4b4e5d4" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "numpy" },
@@ -4489,7 +4536,7 @@ dependencies = [
 [[package]]
 name = "viva-emitters"
 version = "0.4.3"
-source = { git = "https://github.com/vivarium-collective/viva-emitters.git?branch=main#d9ef5997d6a8ffa2097c13be2d463952415d09ab" }
+source = { git = "https://github.com/vivarium-collective/viva-emitters.git?branch=main#794058ea5c8d320d29da8c3d9d9b124d996d4dd3" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "numpy" },
@@ -4530,7 +4577,7 @@ dependencies = [
 [[package]]
 name = "viva-simbio"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-simbio.git?branch=main#ebecf1fb352e81d56f1446df689c0c1cca076d81" }
+source = { git = "https://github.com/vivarium-collective/viva-simbio.git?branch=main#dd4e879603f4589461e667031770db31fcbb00e5" }
 dependencies = [
     { name = "antimony", version = "2.14.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
     { name = "antimony", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'aarch64' or sys_platform != 'linux'" },
@@ -4545,10 +4592,11 @@ dependencies = [
 [[package]]
 name = "viva-superpowers"
 version = "0.24.0"
-source = { git = "https://github.com/vivarium-collective/viva-superpowers.git?branch=main#d2867783f413265b3d89e26a07240458f3b32cc5" }
+source = { git = "https://github.com/vivarium-collective/viva-superpowers.git?branch=main#005498e32b6e4cf33f17d44a28d195600e1f33e9" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "click" },
+    { name = "discovery-engine" },
     { name = "filelock" },
     { name = "jinja2" },
     { name = "jsonschema", extra = ["format-nongpl"] },
@@ -4569,32 +4617,41 @@ evaluator = [
 [[package]]
 name = "viva-tellurium"
 version = "0.1.2"
-source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main#ea53e8ce20d3278cef60662ac52e1572d9b205ec" }
+source = { git = "https://github.com/vivarium-collective/viva-tellurium.git?branch=main#8a7e88516889ac5332b911dd31d1f717c4e9a444" }
 dependencies = [
     { name = "bigraph-schema" },
+    { name = "bigraph-viz" },
+    { name = "jinja2" },
+    { name = "jsonschema", extra = ["format-nongpl"] },
     { name = "libroadrunner" },
+    { name = "matplotlib" },
     { name = "numpy" },
+    { name = "plotly" },
     { name = "process-bigraph" },
+    { name = "pypdf" },
     { name = "pyyaml" },
     { name = "tellurium" },
     { name = "viva-superpowers" },
+    { name = "vivarium-workbench" },
 ]
 
 [[package]]
 name = "viva-workspace"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva-workspace.git?branch=main#248eb235dff283a40dec18cbe4957b8cbb717fe1" }
+source = { git = "https://github.com/vivarium-collective/viva-workspace.git?branch=main#7ad2eb1a43bbb502158a69982c608f5aa66a1de6" }
 dependencies = [
+    { name = "jsonschema" },
     { name = "pyyaml" },
 ]
 
 [[package]]
 name = "vivarium-workbench"
 version = "0.4.1"
-source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#9ec350728d82b7877eed0374b1e46f1bfeda7c10" }
+source = { git = "https://github.com/vivarium-collective/vivarium-workbench.git?branch=main#76f52b407e50881d72f1f2e30a9f69f586f0350c" }
 dependencies = [
     { name = "bigraph-schema" },
     { name = "boto3" },
+    { name = "discovery-engine" },
     { name = "fastapi" },
     { name = "investigation-contracts" },
     { name = "jinja2" },
