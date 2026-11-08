@@ -49,6 +49,15 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Force UTF-8 so file reads don't fall back to the runner's ASCII locale.
+    # Without this, rendering/notebook-export of any investigation whose content
+    # contains non-ASCII bytes (e.g. an em-dash, 0xe2) raises UnicodeDecodeError
+    # and the report HTML is silently dropped from the bundle.
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     steps:
       - uses: actions/checkout@v4
 
