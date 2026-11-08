@@ -98,7 +98,7 @@ pbg-biomodels process BIOMD0000000001 --simulator tellurium --run 20 --interval 
 
 | Investigation | Research question |
 |---|---|
-| [BioModels corpus reproduction — every model across every simulator _(complete)_](https://vivarium-collective.github.io/viva-biomodels/investigations/corpus-reproduction.html) | Across the full BioModels corpus, do independent ODE simulators (COPASI, Tellurium, simbio, AMICI, PySCeS) reproduce the same trajectories for the same model — and where do they diverge? |
+| [BioModels corpus reproduction — every model across every simulator _(complete)_](https://vivarium-collective.github.io/viva-biomodels/workbench/reports/investigation-corpus-reproduction.html) | Across the full BioModels corpus, do independent ODE simulators (COPASI, Tellurium, simbio, AMICI, PySCeS) reproduce the same trajectories for the same model — and where do they diverge? |
 <!-- END:investigations -->
 
 ## Adding a simulator backend
