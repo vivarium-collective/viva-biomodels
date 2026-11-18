@@ -15,6 +15,8 @@ becomes the reserved ``time`` key — see :mod:`viva_biomodels.result_leaf`).
 """
 from __future__ import annotations
 
+import warnings
+import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -43,17 +45,23 @@ def read_reference_leaf(h5_path: str | Path) -> Dict[str, List[float]]:
     """
     import h5py
 
-    if str(h5_path).lower().endswith(".zip"):
-        import io
-        import zipfile
+    try:
+        if str(h5_path).lower().endswith(".zip"):
+            import io
 
-        with zipfile.ZipFile(h5_path) as z:
-            raw = z.read(_ZIP_REPORT_MEMBER)
-        with h5py.File(io.BytesIO(raw), "r") as f:
+            with zipfile.ZipFile(h5_path) as z:
+                raw = z.read(_ZIP_REPORT_MEMBER)
+            with h5py.File(io.BytesIO(raw), "r") as f:
+                return _leaf_from_h5(f)
+
+        with h5py.File(h5_path, "r") as f:
             return _leaf_from_h5(f)
-
-    with h5py.File(h5_path, "r") as f:
-        return _leaf_from_h5(f)
+    except (OSError, KeyError, ValueError, RuntimeError, zipfile.BadZipFile) as e:
+        # An unreadable reference archive means "no reference for this model",
+        # not a failed run — the live engines still produce their timecourses.
+        warnings.warn(f"read_reference_leaf: {h5_path} unreadable ({type(e).__name__}: {e}); "
+                      "treating as no reference", stacklevel=2)
+        return {}
 
 
 def _leaf_from_h5(f) -> Dict[str, List[float]]:
@@ -109,21 +117,31 @@ def resolve_engine_h5(root: str | Path, bid: str, engine: str) -> Optional[Path]
 
 
 def _find_utc_report(group) -> Optional[Any]:
-    """Depth-first search for the first SedReport dataset with a time row."""
+    """Depth-first search for the first SedReport dataset with a time row.
+
+    A corrupt / unreadable HDF5 object is skipped rather than aborting the
+    search. Some BioSimulators reference archives raise
+    ``KeyError: ... bad flag combination for message`` on open under newer HDF5
+    builds; a model must not be dropped just because one object in its reference
+    file is unreadable — the rest of the tree may still hold the UTC report.
+    """
     import h5py
 
     for key in group:
-        item = group[key]
-        if isinstance(item, h5py.Group):
-            found = _find_utc_report(item)
-            if found is not None:
-                return found
+        try:
+            item = group[key]
+            if isinstance(item, h5py.Group):
+                found = _find_utc_report(item)
+                if found is not None:
+                    return found
+                continue
+            if _decode(item.attrs.get("_type", "")) != "SedReport":
+                continue
+            labels = [_decode(v).lower() for v in item.attrs.get("sedmlDataSetLabels", [])]
+            if _TIME_LABEL in labels:
+                return item
+        except (KeyError, OSError, ValueError, RuntimeError):
             continue
-        if _decode(item.attrs.get("_type", "")) != "SedReport":
-            continue
-        labels = [_decode(v).lower() for v in item.attrs.get("sedmlDataSetLabels", [])]
-        if _TIME_LABEL in labels:
-            return item
     return None
 
 
