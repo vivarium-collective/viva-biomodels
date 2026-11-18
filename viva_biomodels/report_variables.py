@@ -109,6 +109,72 @@ def constants_for_sbml(sbml_path: str, sed_doc: Any) -> Dict[str, float]:
     return constant_values(model, report_variable_ids(sed_doc))
 
 
+# --- variable role classification -------------------------------------------
+# A reported variable is one of four semantic roles. Species and reaction fluxes
+# are the *dynamical* output of a simulation; parameters and compartments are
+# the *constant* observables that the SED-ML report also names and that
+# ``constant_values`` fills (report_variables PR #35, "full observable
+# coverage"). Labelling each trace with its role lets a downstream analysis keep
+# the full coverage while setting the constants aside, so flat parameter /
+# compartment traces no longer dilute cross-engine agreement statistics.
+ROLE_SPECIES = "species"
+ROLE_FLUX = "flux"
+ROLE_PARAMETER = "parameter"
+ROLE_COMPARTMENT = "compartment"
+#: The two constant-by-construction roles — flat over a UTC run by definition.
+CONSTANT_ROLES = frozenset({ROLE_PARAMETER, ROLE_COMPARTMENT})
+
+
+def classify_report_variables(model: Any, var_ids: List[str]) -> Dict[str, str]:
+    """Map each reported variable to its SBML role.
+
+    ``{var_id: "species"|"flux"|"parameter"|"compartment"}``. Classification is
+    by SBML id (and, for robustness against engines that emit a display *name*
+    — e.g. COPASI — also by name). Anything that is not a declared species,
+    global parameter or compartment is a reaction output and is labelled
+    ``flux`` (reaction ids are the engines' time-varying flux/rate columns).
+
+    SBML ids are unique across the document, so species/parameter/compartment
+    never collide; the name fallback is applied only when an id does not match.
+    """
+    def _ids_and_names(getter: Any) -> tuple:
+        ids, names = set(), set()
+        for e in getter():
+            ids.add(e.getId())
+            if e.isSetName() and e.getName():
+                names.add(e.getName())
+        return ids, names
+
+    sp_ids, sp_names = _ids_and_names(model.getListOfSpecies)
+    pa_ids, pa_names = _ids_and_names(model.getListOfParameters)
+    co_ids, co_names = _ids_and_names(model.getListOfCompartments)
+
+    out: Dict[str, str] = {}
+    for v in var_ids:
+        if v in co_ids or v in co_names:
+            out[v] = ROLE_COMPARTMENT
+        elif v in pa_ids or v in pa_names:
+            out[v] = ROLE_PARAMETER
+        elif v in sp_ids or v in sp_names:
+            out[v] = ROLE_SPECIES
+        else:
+            out[v] = ROLE_FLUX
+    return out
+
+
+def variable_roles_for_sbml(sbml_path: str, var_ids: List[str]) -> Dict[str, str]:
+    """Convenience: role of each reported variable given a model's SBML path.
+
+    Returns ``{}`` when the SBML has no model. Ids that cannot be resolved still
+    receive a role (``flux``) so every variable is labelled.
+    """
+    sd = libsbml.readSBML(str(sbml_path))
+    model = sd.getModel()
+    if model is None:
+        return {}
+    return classify_report_variables(model, list(var_ids))
+
+
 def complete_utc_leaf(leaf: Dict[str, List[float]], constants: Dict[str, float]) -> Dict[str, List[float]]:
     """Add missing constant observables to a UTC results leaf, in place.
 

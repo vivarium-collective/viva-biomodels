@@ -8,8 +8,12 @@ import pytest
 
 pytest.importorskip("pyarrow")
 
+import math
+
+import pyarrow.parquet as pq
+
 from viva_biomodels import result_leaf
-from viva_biomodels.two_tier import write_model
+from viva_biomodels.two_tier import series_table, write_model
 from viva_biomodels.lazy_viewer import _parquet_leaves_aligned
 
 
@@ -49,3 +53,37 @@ def test_two_tier_roundtrip_utc_and_steady_state(tmp_path):
     assert "time" not in ss
     assert ss["A"] == pytest.approx([2.5])
     assert ss["B"] == pytest.approx([7.5])
+
+
+def test_series_table_labels_variable_roles():
+    results = {
+        "auto_ten_seconds": {
+            "copasi": {"time": [0.0, 1.0], "A": [1.0, 2.0], "k1": [3.0, 3.0], "cell": [2.0, 2.0]},
+        }
+    }
+    roles = {"A": "species", "k1": "parameter", "cell": "compartment"}
+    tbl = series_table(results, roles=roles).to_pydict()
+    by_var = dict(zip(tbl["variable"], tbl["role"]))
+    assert by_var == {"A": "species", "k1": "parameter", "cell": "compartment"}
+
+
+def test_series_table_role_defaults_to_unknown_without_map():
+    results = {"j": {"copasi": {"time": [0.0, 1.0], "A": [1.0, 2.0]}}}
+    tbl = series_table(results).to_pydict()
+    assert set(tbl["role"]) == {"unknown"}
+
+
+def test_series_table_collapses_inf_and_nan_to_single_sentinel():
+    results = {
+        "j": {
+            "copasi": {
+                "time": [0.0, 1.0, 2.0, 3.0],
+                "A": [1.0, float("inf"), float("-inf"), float("nan")],
+            }
+        }
+    }
+    vals = series_table(results, roles={"A": "species"}).to_pydict()["value"]
+    assert vals[0] == pytest.approx(1.0)
+    # every non-finite point becomes NaN — no inf survives, one encoding.
+    assert all(math.isnan(v) for v in vals[1:])
+    assert not any(math.isinf(v) for v in vals)

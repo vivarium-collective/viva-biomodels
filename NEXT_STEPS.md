@@ -124,3 +124,19 @@ Skills in Claude Code can `open <url>` to surface a focused interaction without 
 
 [discovery]: https://github.com/vivarium-collective/pbg-superpowers/blob/main/docs/conventions/discovery.md
 [pbg-superpowers]: https://github.com/vivarium-collective/pbg-superpowers
+
+## Re-run follow-ups (from the 2026-10-28 findings)
+
+After the corpus-side fixes in `docs/reviews/2026-11-18-findings-response.md`,
+these need the next full corpus run (on the mini) to close out:
+
+- [ ] Regenerate the all-engines corpus so `role` is emitted natively and the
+      **tellurium concentration fix** takes effect; re-check cross-engine
+      agreement with `role in (parameter, compartment)` excluded.
+- [ ] Backfill the `role` column onto the **full-res 200-pt release** T.J.
+      analyzes (same `scripts/backfill_variable_roles.py`), on the mini / R2.
+- [ ] Verify the **copasi BIOMD0000000465 `auto_ten_seconds`** time grid
+      (0–995 → 0–10) — looks model-specific.
+- [ ] Make the live dashboard summary (`lazy_viewer._summary_stats`) role-aware
+      once the two-tier `series/<bid>.parquet` carries `role`, so our own
+      headline excludes constants too.

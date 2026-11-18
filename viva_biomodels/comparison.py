@@ -21,6 +21,15 @@ BUCKET_THRESHOLDS = [
 ]
 NO_COMPARISON_BUCKET = ("none", "No comparison")
 
+# A trace whose largest magnitude across both engines is at or below this floor
+# is treated as effectively zero and set aside from the normalized-RMSE mean —
+# exactly like an exactly-both-zero trace. Without it, one engine reporting a
+# rounding-noise constant (e.g. 2.2e-16) against another's exact 0 normalizes to
+# nRMSE 1.0 and lands in the "large diff" bucket, a false divergence that is
+# only machine epsilon (reviewer findings, 2026-10-28). 1e-12 sits far above
+# float rounding noise yet below any physically meaningful trajectory.
+ZERO_TRACE_ATOL = 1e-12
+
 
 def union_species(engines: Dict[str, Any]) -> List[str]:
     """Return the ordered union of species columns across all engines."""
@@ -81,7 +90,10 @@ def compare_two_engines(
         rmse_by_species[sp] = rmse
         denom = max((abs(v) for v in y1[:n]), default=0.0)
         denom = max(denom, max((abs(v) for v in y2[:n]), default=0.0))
-        if denom > 0:
+        # Set aside traces that are both effectively zero (within machine
+        # epsilon) — normalizing their RMSE would amplify rounding noise into a
+        # spurious divergence. See ZERO_TRACE_ATOL.
+        if denom > ZERO_TRACE_ATOL:
             nrmse_by_species[sp] = rmse / denom
 
     if nrmse_by_species:
