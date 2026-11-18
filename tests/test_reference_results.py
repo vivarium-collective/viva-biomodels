@@ -122,3 +122,15 @@ def test_discover_and_resolve_engine_h5_with_version_dirs(tmp_path):
     assert resolve_engine_h5(root, bid, "amici") is None
     # Missing model → no engines.
     assert discover_reference_engines(root, "BIOMD9999999999") == []
+
+
+def test_read_reference_leaf_tolerates_unreadable_file(tmp_path):
+    """An unreadable reference archive is treated as 'no reference' (empty leaf),
+    not a crash — a model must not be lost over a corrupt reference file
+    (environmental h5py 'bad flag combination' errors)."""
+    from viva_biomodels.reference_results import read_reference_leaf
+
+    bogus = tmp_path / "reports.h5"
+    bogus.write_bytes(b"not an hdf5 file at all")
+    with pytest.warns(UserWarning, match="unreadable"):
+        assert read_reference_leaf(bogus) == {}
