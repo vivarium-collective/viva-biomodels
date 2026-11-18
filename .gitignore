@@ -38,3 +38,8 @@ studies/repeat-matching/results/*_timecourse.parquet
 # Editor settings (JetBrains). An untracked folder here makes the workbench refuse a remote run
 # ("uncommitted changes"), since a remote run installs the workspace from git.
 .idea/
+
+# Engine compile/translation caches (regenerated per run; a stray untracked
+# folder here makes the workbench refuse a remote run as "uncommitted changes").
+amici_models/
+pysces_models/

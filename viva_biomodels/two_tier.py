@@ -18,11 +18,16 @@ materialized.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+#: Role assigned to a variable whose SBML classification is unavailable (no
+#: ``roles`` map was threaded through). The backfill script fills these in.
+UNKNOWN_ROLE = "unknown"
 
 
 def _thin(seq: List[float], max_points: int) -> List[float]:
@@ -33,13 +38,33 @@ def _thin(seq: List[float], max_points: int) -> List[float]:
     return [seq[int(i * stride)] for i in range(max_points)]
 
 
-def series_table(model_results: Dict[str, Any], max_points: int = 200) -> pa.Table:
+def _finite_or_nan(x: float, nan: float) -> float:
+    """Collapse every non-finite value (``inf``/``-inf``/``NaN``) to a single
+    NaN sentinel, so missing/blown-up points share one encoding in the value
+    column instead of a NaN/NULL/inf mix (findings 2026-10-28)."""
+    return x if math.isfinite(x) else nan
+
+
+def series_table(
+    model_results: Dict[str, Any],
+    max_points: int = 200,
+    roles: Optional[Dict[str, str]] = None,
+) -> pa.Table:
     """Flatten one model's ``{job: {engine: {var: [...], time: [...]}}}`` to a
-    tidy Arrow table (job, engine, variable, time, value), downsampled + f32.
+    tidy Arrow table (job, engine, variable, role, time, value), downsampled + f32.
+
+    ``roles`` maps each variable id to its SBML role
+    (``species``/``flux``/``parameter``/``compartment``; see
+    ``report_variables.classify_report_variables``). A downstream analysis can
+    then set the constant ``parameter``/``compartment`` traces aside so they do
+    not dilute cross-engine agreement statistics. When ``roles`` is omitted the
+    role column is filled with ``"unknown"`` (backfilled separately).
     """
+    roles = roles or {}
     jobs: List[str] = []
     engines: List[str] = []
     variables: List[str] = []
+    role_col: List[str] = []
     times: List[float] = []
     values: List[float] = []
     nan = float("nan")
@@ -60,7 +85,7 @@ def series_table(model_results: Dict[str, Any], max_points: int = 200) -> pa.Tab
             for var, ys in leaf.items():
                 if var in ("time", "scan") or not isinstance(ys, list):
                     continue
-                yv = _thin([float(x) for x in ys], max_points)
+                yv = [_finite_or_nan(float(x), nan) for x in _thin([float(x) for x in ys], max_points)]
                 if is_ss:
                     tv = [nan] * len(yv)
                     m = len(yv)
@@ -70,6 +95,7 @@ def series_table(model_results: Dict[str, Any], max_points: int = 200) -> pa.Tab
                 jobs.extend([job] * m)
                 engines.extend([engine] * m)
                 variables.extend([var] * m)
+                role_col.extend([roles.get(var, UNKNOWN_ROLE)] * m)
                 times.extend(tv[:m])
                 values.extend(yv[:m])
     return pa.table({
@@ -77,6 +103,7 @@ def series_table(model_results: Dict[str, Any], max_points: int = 200) -> pa.Tab
         "job": pa.array(jobs).dictionary_encode(),
         "engine": pa.array(engines).dictionary_encode(),
         "variable": pa.array(variables).dictionary_encode(),
+        "role": pa.array(role_col).dictionary_encode(),
         "time": pa.array(times, type=pa.float32()),
         "value": pa.array(values, type=pa.float32()),
     })
@@ -88,15 +115,18 @@ def write_model(
     model_comparisons: Dict[str, Any],
     out_dir: Path,
     max_points: int = 200,
+    roles: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """Write ``series/<bid>.parquet`` and return this model's index entry.
 
     The index entry carries everything the overview + cross-engine tables need
     (per-job comparison matrix, engines, ok/failed counts) — no time series.
+    ``roles`` (``{var_id: role}``) labels each variable's SBML role in the
+    series parquet; see ``series_table``.
     """
     series_dir = out_dir / "series"
     series_dir.mkdir(parents=True, exist_ok=True)
-    table = series_table(model_results, max_points=max_points)
+    table = series_table(model_results, max_points=max_points, roles=roles)
     pq.write_table(table, series_dir / f"{bid}.parquet", compression="zstd")
 
     jobs_entry: Dict[str, Any] = {}

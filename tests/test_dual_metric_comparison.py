@@ -41,3 +41,24 @@ def test_steady_state_pair_and_matrix():
         {"c": {"A": 1.0}, "t": {"A": 1.0}, "s": {"A": 50.0}})
     assert "matrix_closeness" in r and r["closeness_bucket"] == "not_close"
     assert r["matrix_closeness"]["c"]["t"] == 0.0
+
+
+def test_machine_epsilon_vs_zero_is_not_a_divergence():
+    """A rounding-noise constant (2.2e-16) against an exact-0 trace must be set
+    aside, not normalized into a spurious 'large' bucket (reviewer findings)."""
+    eps = {"columns": ["A"], "values": [[2.2e-16], [2.2e-16], [2.2e-16]], "time": [0, 1, 2]}
+    zero = {"columns": ["A"], "values": [[0.0], [0.0], [0.0]], "time": [0, 1, 2]}
+    r = compare_two_engines(eps, zero, "pysces", "copasi")
+    # the trace is below ZERO_TRACE_ATOL → excluded from the nRMSE mean entirely.
+    assert "A" not in r["nrmse_by_species"]
+    assert r["mean_nrmse"] is None
+    assert r["bucket"] == "none"
+
+
+def test_real_signal_just_above_floor_still_compared():
+    """A genuinely small but real trace (well above the floor) is still scored."""
+    a = {"columns": ["A"], "values": [[1e-6], [2e-6], [3e-6]], "time": [0, 1, 2]}
+    b = {"columns": ["A"], "values": [[1e-6], [2e-6], [3e-6]], "time": [0, 1, 2]}
+    r = compare_two_engines(a, b, "copasi", "tellurium")
+    assert "A" in r["nrmse_by_species"]
+    assert r["mean_nrmse"] == 0.0

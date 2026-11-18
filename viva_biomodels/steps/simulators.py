@@ -131,13 +131,22 @@ class BiomodelsTelluriumStep(Step):
         rr = roadrunner.RoadRunner(state["model_source"])
         species = list(rr.model.getFloatingSpeciesIds())
         reactions = list(rr.model.getReactionIds())
-        rr.selections = ["time"] + species + reactions
+        # Select species as CONCENTRATIONS (`[S]`), not RoadRunner's bare-id
+        # default — a bare `S` returns the amount for a substance-units species,
+        # so an amount-defined species came out a compartment-size factor off
+        # from COPASI/PySCeS (which report concentrations) and from tellurium's
+        # own earlier releases. Reporting `[S]` restores the concentration
+        # convention shared across engines (reviewer findings, 2026-10-28:
+        # tellurium's compartment-sized rescaling). The column LABELS stay the
+        # bare ids so a variable still aligns across engines for comparison.
+        conc_selections = ["[%s]" % s for s in species]
+        rr.selections = ["time"] + conc_selections + reactions
         arr = rr.simulate(0.0, float(state["time"]), n_points)
-        colnames = list(arr.colnames)
         data = [[float(v) for v in row] for row in arr]
-        # First column is time; the rest are the selected observables.
+        # First column is time; the rest are the selected observables, labelled
+        # by their bare SBML ids (species concentrations, then reaction rates).
         time_list = [row[0] for row in data]
-        columns = colnames[1:]
+        columns = species + reactions
         values = [row[1:] for row in data]
         return {
             "result": {
