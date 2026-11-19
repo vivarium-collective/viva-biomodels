@@ -100,11 +100,11 @@ def to_numeric_result(leaf: Dict[str, Any]) -> Dict[str, Any]:
     obs = observables_of(leaf)
     cols = list(obs.keys())
     n_rows = min((len(obs[c]) for c in cols), default=0)
-    values = [[_as_scalar(obs[c][r]) for c in cols] for r in range(n_rows)]
+    values = [[as_scalar(obs[c][r]) for c in cols] for r in range(n_rows)]
     return {"time": axis, "columns": cols, "values": values}
 
 
-def _as_scalar(x: Any) -> float:
+def as_scalar(x: Any) -> float:
     """Coerce one observable cell to a float.
 
     A cell is normally a bare scalar, but a constant-filled observable

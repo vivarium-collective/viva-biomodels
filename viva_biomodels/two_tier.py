@@ -81,11 +81,14 @@ def series_table(
             # the per-job index kind relabels a scan axis back on read.
             axis_name, axis_vals = result_leaf.axis_of(leaf)
             is_ss = not axis_name
-            t = _thin([float(x) for x in axis_vals], max_points)
+            # as_scalar tolerates length-1 nested cells ([v]) that some engines /
+            # constant-fills emit for params/compartments under current deps.
+            t = _thin([result_leaf.as_scalar(x) for x in axis_vals], max_points)
             for var, ys in leaf.items():
                 if var in ("time", "scan") or not isinstance(ys, list):
                     continue
-                yv = [_finite_or_nan(float(x), nan) for x in _thin([float(x) for x in ys], max_points)]
+                yv = [_finite_or_nan(x, nan)
+                      for x in _thin([result_leaf.as_scalar(x) for x in ys], max_points)]
                 if is_ss:
                     tv = [nan] * len(yv)
                     m = len(yv)
