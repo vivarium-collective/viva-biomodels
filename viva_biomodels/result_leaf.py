@@ -100,8 +100,22 @@ def to_numeric_result(leaf: Dict[str, Any]) -> Dict[str, Any]:
     obs = observables_of(leaf)
     cols = list(obs.keys())
     n_rows = min((len(obs[c]) for c in cols), default=0)
-    values = [[float(obs[c][r]) for c in cols] for r in range(n_rows)]
+    values = [[as_scalar(obs[c][r]) for c in cols] for r in range(n_rows)]
     return {"time": axis, "columns": cols, "values": values}
+
+
+def as_scalar(x: Any) -> float:
+    """Coerce one observable cell to a float.
+
+    A cell is normally a bare scalar, but a constant-filled observable
+    (parameter / compartment) can arrive length-1 nested — ``[v]`` instead of
+    ``v`` — depending on the engine / SED-ML job shape, which used to crash
+    ``float()`` and drop the whole model. Unwrap any length-1 nesting; a
+    genuinely multi-valued cell collapses to its first element (a defensive last
+    resort — such a cell is malformed to begin with)."""
+    while isinstance(x, (list, tuple)):
+        x = x[0] if x else 0.0
+    return float(x)
 
 
 def steady_state_scalars(leaf: Dict[str, Any]) -> Dict[str, float]:

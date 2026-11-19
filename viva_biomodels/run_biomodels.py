@@ -590,6 +590,10 @@ def extract_sbml_units(sbml_path: str) -> Dict[str, Any]:
 # ----------------------------
 
 def fetch_biomodel_files_to_dir(biomodel_file_entry: Any, out_dir: str) -> str:
+    # A local filesystem path (the metadata-fetch cache fallback) is used as-is,
+    # without going back to the biomodels package / network.
+    if isinstance(biomodel_file_entry, (str, os.PathLike)) and os.path.exists(str(biomodel_file_entry)):
+        return str(biomodel_file_entry)
     f = biomodels.get_file(biomodel_file_entry)
 
     if isinstance(f, (str, os.PathLike)) and os.path.exists(str(f)):
@@ -604,6 +608,37 @@ def fetch_biomodel_files_to_dir(biomodel_file_entry: Any, out_dir: str) -> str:
 
     Path(out_path).write_text(str(f), encoding="utf-8")
     return out_path
+
+
+def local_cache_entry(biomodel_id: str) -> Optional[Dict[str, Any]]:
+    """A file entry built from the on-disk cache, for the metadata-fetch fallback.
+
+    BioModels metadata is fetched over the network; when that 404s / errors (an
+    endpoint or cache-miss issue, unrelated to the simulation) the model's SBML +
+    SED-ML are usually already on disk from a prior run — in ``models/<bid>/`` or
+    the biomodels pooch download cache. Returns ``{"files": [<local paths>]}`` (a
+    shape ``_iter_entry_files`` understands) when both an SBML and a SED-ML file
+    are found locally, else ``None`` (nothing to fall back to).
+    """
+    import glob
+
+    dirs = [os.path.join(os.getcwd(), "models", biomodel_id)]
+    try:
+        from biomodels.common import cache_path
+        dirs.append(os.path.join(str(cache_path), "model", "download", biomodel_id))
+    except Exception:
+        pass
+
+    files: List[str] = []
+    for d in dirs:
+        if os.path.isdir(d):
+            for p in sorted(glob.glob(os.path.join(d, "*"))):
+                if _SBML_RE.search(p) or _SEDML_RE.search(p):
+                    files.append(p)
+    files = sorted(set(files))
+    if find_first_sbml(files) is not None and find_first_sedml(files) is not None:
+        return {"files": files}
+    return None
 
 
 def load_biomodel(biomodel_id: str, metadata_or_entry: Any) -> BiomodelLoadResult:

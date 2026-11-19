@@ -65,6 +65,7 @@ class LoadBiomodelStep(Step):
         # Lazy import so loading this module doesn't pull in biomodels'
         # heavy chain when only the type is being inspected.
         import os
+        import warnings
 
         import biomodels
 
@@ -72,6 +73,7 @@ class LoadBiomodelStep(Step):
             extract_all_simulations,
             extract_repeated_tasks,
             load_biomodel,
+            local_cache_entry,
             read_sedml_doc,
         )
 
@@ -82,8 +84,23 @@ class LoadBiomodelStep(Step):
                 "set it in the composite state before running."
             )
 
-        meta = biomodels.get_metadata(biomodel_id)
-        result = load_biomodel(biomodel_id, meta)
+        # Metadata is a network fetch; it can 404 / error for a model whose
+        # SBML + SED-ML are already cached on disk (an endpoint / cache-miss
+        # issue, not a simulation failure). Fall back to the local cache so the
+        # model still runs rather than dropping it from the corpus.
+        try:
+            meta = biomodels.get_metadata(biomodel_id)
+            result = load_biomodel(biomodel_id, meta)
+        except Exception as fetch_err:
+            entry = local_cache_entry(biomodel_id)
+            if entry is None:
+                raise
+            warnings.warn(
+                f"LoadBiomodelStep: metadata fetch for {biomodel_id} failed "
+                f"({type(fetch_err).__name__}: {fetch_err}); using local SBML/SED-ML cache",
+                stacklevel=2,
+            )
+            result = load_biomodel(biomodel_id, entry)
 
         # Parse every SED-ML simulation for the new sedml_jobs output, plus
         # any 1-D parameter scans (repeatedTask) as `repeated_task` jobs.
