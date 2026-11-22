@@ -4583,7 +4583,7 @@ dependencies = [
 [[package]]
 name = "viva-workspace"
 version = "0.1.0"
-source = { git = "https://github.com/vivarium-collective/viva:workspace.git?branch=main#248eb235dff283a40dec18cbe4957b8cbb717fe1" }
+source = { git = "https://github.com/vivarium-collective/viva-workspace.git?branch=main#248eb235dff283a40dec18cbe4957b8cbb717fe1" }
 dependencies = [
     { name = "pyyaml" },
 ]
