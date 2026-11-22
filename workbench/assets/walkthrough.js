@@ -12,7 +12,7 @@
 
   // Prefix a root-absolute /api path with the dashboard base path (e.g. /workbench)
   // so composite-explore run/resolve/status calls reach the workbench under the
-  // co-tenant ALB instead of misrouting to sms-api → 404. No-op at root; composes
+  // co-tenant ALB instead of misrouting to the backend → 404. No-op at root; composes
   // safely with the global _base_path_shim (which skips already-prefixed URLs).
   function _api(p) {
     return (window.DataSource && window.DataSource.apiUrl) ? window.DataSource.apiUrl(p) : p;
@@ -180,6 +180,28 @@
       'background:' + meta.color + '14;border:1px solid ' + meta.color + '40">' +
       '<span style="font-size:1.1em;line-height:1">' + meta.icon + '</span>' +
       (compact ? '' : _esc(meta.label)) + (meta.derived ? '<sup title="derived">*</sup>' : '') + '</span>';
+  }
+
+  // Honesty marker for a COMPLETED card whose input dependencies are not done.
+  // The execution badge reflects only THIS study's own run; the server
+  // (investigation_graph_views) sets `upstream_incomplete` to the member studies
+  // it builds on (interface inputs / prerequisites) that are not themselves
+  // completed. So a study reading "Completed" while one of those is still
+  // Planned/Running is only *provisionally* complete — flag it with an amber chip
+  // instead of letting the clean "Completed" badge imply the chain is finished.
+  function _aigUpstreamIncompleteChip(slugs, compact) {
+    slugs = slugs || [];
+    if (!slugs.length) return '';
+    var ttl = 'Provisional — this study reads "Completed", but ' + slugs.length +
+      (slugs.length === 1 ? ' study it builds on has' : ' studies it builds on have') +
+      ' not finished: ' + slugs.join(', ');
+    var c = '#b45309';  // amber-700
+    return '<span class="aig-upstream-incomplete" title="' + _esc(ttl) + '" ' +
+      'style="display:inline-flex;align-items:center;gap:3px;font-size:0.6em;font-weight:700;' +
+      'white-space:nowrap;border-radius:9999px;padding:1px 7px;color:' + c + ';' +
+      'background:' + c + '14;border:1px solid ' + c + '40">' +
+      '<span style="font-size:1.05em;line-height:1">⚠</span>' +
+      (compact ? '' : 'upstream incomplete') + '</span>';
   }
 
   // ── Clickable axis-marker breakdown (graph cards) ────────────────────────────
@@ -475,25 +497,80 @@
   // Generic modal helpers
   // -------------------------------------------------------------------------
 
+  // Accessibility (issue #1618): remember what had focus before a dialog opened
+  // so it can be restored on close, and move focus into the dialog on open.
+  var _modalReturnFocus = null;
+
+  function _focusFirstInModal(el) {
+    // Prefer the first real text field (so you can type immediately — the
+    // audit's "focus stays on the page body" finding); fall back to any
+    // focusable control, then the dialog box itself.
+    var field = el.querySelector(
+      "input:not([type=hidden]):not([disabled]),textarea:not([disabled]),select:not([disabled])"
+    );
+    var target = field
+      || el.querySelector("button:not([disabled]),[href],[tabindex]:not([tabindex='-1'])")
+      || el.querySelector(".modal-box")
+      || el;
+    if (target) { try { target.focus(); } catch (e) { /* ignore */ } }
+  }
+
   function openModal(id) {
     var el = document.getElementById(id);
-    if (el) el.style.display = "flex";
+    if (!el) return;
+    _modalReturnFocus = document.activeElement;
+    el.style.display = "flex";
+    // Mark the dialog box for assistive tech and label it from its heading.
+    var box = el.querySelector(".modal-box") || el;
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-modal", "true");
+    var heading = el.querySelector("h1,h2,h3,h4");
+    if (heading) {
+      if (!heading.id) heading.id = id + "-title";
+      box.setAttribute("aria-labelledby", heading.id);
+    }
+    _focusFirstInModal(el);
+  }
+
+  function _dismissModalEl(el) {
+    if (!el) return;
+    el.style.display = "none";
+    // Clear inline errors.
+    var errEl = el.querySelector(".form-error");
+    if (errEl) errEl.textContent = "";
+    // Restore focus to whatever held it before the dialog opened.
+    if (_modalReturnFocus && typeof _modalReturnFocus.focus === "function") {
+      try { _modalReturnFocus.focus(); } catch (e) { /* ignore */ }
+    }
+    _modalReturnFocus = null;
   }
 
   function closeModal(id) {
-    var el = document.getElementById(id);
-    if (el) {
-      el.style.display = "none";
-      // Clear inline errors.
-      var errEl = el.querySelector(".form-error");
-      if (errEl) errEl.textContent = "";
-    }
+    _dismissModalEl(document.getElementById(id));
   }
+
+  // Esc closes the top-most open dialog (audit: "Escape doesn't close them").
+  // No-op when no modal overlay is visible, so it never fights native controls
+  // or the inline-edit editor's own Esc-to-cancel.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape" && e.keyCode !== 27) return;
+    var overlays = document.querySelectorAll(".modal-overlay");
+    for (var i = overlays.length - 1; i >= 0; i--) {
+      var o = overlays[i];
+      try {
+        if (getComputedStyle(o).display !== "none") {
+          _dismissModalEl(o);
+          e.preventDefault();
+          break;
+        }
+      } catch (err) { /* ignore */ }
+    }
+  });
 
   // Close modals when clicking the overlay background.
   document.addEventListener("click", function (e) {
     if (e.target && e.target.classList.contains("modal-overlay")) {
-      e.target.style.display = "none";
+      _dismissModalEl(e.target);
     }
   });
 
@@ -1389,6 +1466,85 @@
       _esc(label || 'Download') + '</a>';
   }
 
+  // The file URL for a workspace-relative path — same resolution as the download
+  // link (snapshot → GitHub raw base; live → '/' + path), but WITHOUT the download
+  // attribute, so it can be viewed inline.
+  function _inputsFileUrl(path) {
+    var cfg = window.__DASH_CONFIG__ || {};
+    var rel = String(path || '').replace(/^\/+/, '');
+    return (cfg.mode === 'snapshot' && cfg.inputsDownloadBase)
+      ? String(cfg.inputsDownloadBase).replace(/\/+$/, '') + '/' + rel
+      : '/' + rel;
+  }
+
+  // A "View" button that opens the file in an in-page modal (args URL-encoded so
+  // quotes/HTML in names never break the inline handler).
+  function _inputsViewBtn(path, name) {
+    if (!path) return '';
+    var u = encodeURIComponent(_inputsFileUrl(path));
+    var n = encodeURIComponent(String(name || path));
+    return '<button class="action-btn" style="font-size:0.8em;padding:1px 8px;' +
+      'margin-right:5px" onclick="_viewResource(\'' + u + '\',\'' + n + '\')">👁 View</button>';
+  }
+
+  // Extensions we can render inline as text; PDFs go in an <iframe>; anything else
+  // falls back to Download / open-in-new-tab.
+  var _RES_TEXT_EXT = ['xml', 'sbml', 'ant', 'txt', 'json', 'csv', 'tsv', 'bib',
+    'md', 'yaml', 'yml', 'html', 'log', 'py', 'r', 'csl'];
+
+  window._viewResource = function (encUrl, encName) {
+    _openResourceModal(decodeURIComponent(encUrl), decodeURIComponent(encName));
+  };
+
+  function _openResourceModal(url, name) {
+    var d = document;
+    var ext = (String(name || url).split('.').pop() || '').toLowerCase();
+    // raw.githubusercontent.com sends `access-control-allow-origin: *`; the snapshot's
+    // github.com/<o>/<r>/raw/<ref>/<path> base 302-redirects there but drops CORS on
+    // the redirect, so a cross-origin fetch/embed of it fails ("Load failed"). Hit the
+    // raw host directly. (Download / New-tab keep the original url — navigation needs no CORS.)
+    var srcUrl = String(url).replace(
+      /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/raw\/(.+)$/,
+      'https://raw.githubusercontent.com/$1/$2/$3');
+    var overlay = d.createElement('div');
+    overlay.className = 'res-view-overlay';
+    var close = function () { if (overlay.parentNode) d.body.removeChild(overlay); d.removeEventListener('keydown', onKey); };
+    var onKey = function (e) { if (e.key === 'Escape') close(); };
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    var head = '<div class="res-view-head"><strong class="res-view-title">' + _esc(name) + '</strong>' +
+      '<span style="flex:1"></span>' +
+      '<a class="action-btn" href="' + _esc(url) + '" download style="text-decoration:none">⬇ Download</a>' +
+      '<a class="action-btn" href="' + _esc(url) + '" target="_blank" rel="noopener" style="text-decoration:none">↗ New tab</a>' +
+      '<button class="action-btn res-view-close" title="Close (Esc)">✕</button></div>';
+    var body;
+    if (ext === 'pdf') {
+      body = '<iframe class="res-view-frame" src="' + _esc(srcUrl) + '" title="' + _esc(name) + '"></iframe>';
+    } else if (_RES_TEXT_EXT.indexOf(ext) !== -1) {
+      body = '<pre class="res-view-pre">Loading…</pre>';
+    } else {
+      body = '<div class="res-view-note">No inline preview for <code>.' + _esc(ext) +
+        '</code> — use Download or open in a new tab.</div>';
+    }
+    var panel = d.createElement('div');
+    panel.className = 'res-view-panel';
+    panel.innerHTML = head + '<div class="res-view-body">' + body + '</div>';
+    overlay.appendChild(panel);
+    d.body.appendChild(overlay);
+    panel.querySelector('.res-view-close').addEventListener('click', close);
+    d.addEventListener('keydown', onKey);
+
+    if (_RES_TEXT_EXT.indexOf(ext) !== -1) {
+      var pre = panel.querySelector('.res-view-pre');
+      fetch(srcUrl).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(function (t) { pre.textContent = t; })
+        .catch(function (err) {
+          pre.textContent = 'Could not load this file in the browser (' + err.message +
+            '). Use Download or “New tab”.';
+        });
+    }
+  }
+
   // Render a datasets list (name + path + download) as a compact table, or a
   // "none" line.
   function _inputsDatasetsHtml(datasets) {
@@ -1398,11 +1554,12 @@
       var name = _esc(ds.name || ds.path || '(unnamed)');
       var path = ds.path || '';
       var src = ds.path || ds.url || '';
+      var view = path ? _inputsViewBtn(path, ds.name || ds.path) : '';
       var dl = path ? _inputsDownloadLink(path, 'Download') :
         (ds.url ? '<a href="' + _esc(ds.url) + '" target="_blank" rel="noopener" ' +
           'class="action-btn" style="font-size:0.8em;padding:1px 8px;text-decoration:none">↗ Source</a>' : '');
       return '<tr class="res-item"><td><code>' + name + '</code></td><td><small class="muted">' +
-        _esc(src) + '</small></td><td style="text-align:right">' + dl + '</td></tr>';
+        _esc(src) + '</small></td><td style="text-align:right;white-space:nowrap">' + view + dl + '</td></tr>';
     }).join('');
     return '<table><thead><tr><th>Name</th><th>Source</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table>';
@@ -1456,7 +1613,8 @@
       : '';
 
     var actions = '';
-    if (ref.pdf_path) actions += ' ' + _inputsDownloadLink(ref.pdf_path, 'PDF');
+    if (ref.pdf_path) actions += ' ' + _inputsViewBtn(ref.pdf_path, (ref.title || key || 'reference') + '.pdf') +
+      _inputsDownloadLink(ref.pdf_path, 'PDF');
 
     var bibtex = ref.bibtex || '';
     var bibBlock = '';
@@ -1551,7 +1709,8 @@
         doc = doc || {};
         var name = _esc(doc.name || doc.path || '(unnamed)');
         var path = doc.path ? ' <small class="muted">' + _esc(doc.path) + '</small>' : '';
-        var dl = doc.path ? ' ' + _inputsDownloadLink(doc.path, 'Download') : '';
+        var dl = doc.path ? ' ' + _inputsViewBtn(doc.path, doc.name || doc.path) +
+          _inputsDownloadLink(doc.path, 'Download') : '';
         var desc = doc.description
           ? '<div class="muted" style="font-size:0.85em;margin-top:2px">' +
             _esc(doc.description) + '</div>'
@@ -2199,40 +2358,49 @@
 
   function _render3dVizCard(v) {
     // Snapshot base-path: in a hosted read-only bundle (e.g. /v2ecoli/dashboard)
-    // both the parsimony viewer assets and the saved pack live under the base
+    // both the viewer assets and the saved pack live under the base
     // path, so prefix both. basePath is "" in local mode, leaving URLs unchanged.
     var base = (window.DataSource && window.DataSource.basePath)
       ? window.DataSource.basePath()
       : ((window.__DASH_CONFIG__ && window.__DASH_CONFIG__.basePath) || "");
     var packUrl = base + v.pack_url;
     // An external viewer_url (e.g. assets hosted on Cloudflare R2) overrides the
-    // bundled gh-pages viewer + pack — used to dodge GitHub Pages rate-limiting
-    // for heavy packs. Configured via ui.viz_viewer_urls in workspace.yaml.
+    // bundled viewer + pack — used to dodge GitHub Pages rate-limiting for heavy
+    // packs. Configured via ui.viz_viewer_urls in workspace.yaml. Otherwise, if
+    // the workspace declares a local 3D-viewer bundle package (ui.viz_viewer_bundle
+    // → viewer_bundle_package), point the generic contributed-viewer route at the
+    // pack. The workbench names no specific viewer.
     var src = v.viewer_url
       ? v.viewer_url
-      : (base + '/parsimony-viewer/index.html?file=' + encodeURIComponent(packUrl));
+      : (v.viewer_bundle_package
+          ? (base + '/contributed-viewer/' + encodeURIComponent(v.viewer_bundle_package) +
+             '/index.html?file=' + encodeURIComponent(packUrl))
+          : null);
     var meta = [];
     if (v.study) meta.push('study: ' + _esc(v.study));
     if (v.n_placed) meta.push(Number(v.n_placed).toLocaleString() + ' instances');
-    // How the model was built. Server may supply a per-pack `description`;
-    // otherwise fall back to the default E. coli structural-model blurb.
+    // The contributing workspace/viewer supplies the real description; the
+    // workbench core keeps only a generic fallback blurb.
     var desc = v.description ||
-      'Generated from <strong>v2ecoli</strong>\'s whole-cell molecular state: the ' +
-      'simulated copy number of each protein and complex sets how many copies are ' +
-      'placed in the cell. Each species is mapped to a real 3D structure &mdash; ' +
-      'AlphaFold-predicted monomers plus curated experimental assemblies (e.g. the ' +
-      '70S ribosome and RNA polymerase) &mdash; and packed into a capsule-shaped ' +
-      'cell volume by the <strong>parsimony</strong> engine, a Rust cellPACK-style ' +
-      'packer (via pbg-parsimony). Colors group molecules by functional category.';
+      'A 3D molecular packing of the cell: each species’ simulated copy number ' +
+      'sets how many copies are placed, mapped to real 3D structures and packed ' +
+      'into the cell volume. Colors group molecules by functional category.';
+    // No viewer_url and no declared local bundle → the pack exists but there is
+    // no viewer to render it; show the card without a dead Open link / blank iframe.
+    var body = src
+      ? ('<iframe class="viz-embed" src="' + _esc(src) + '" loading="lazy" ' +
+         'style="width:100%;height:460px;border:1px solid #2a313c;border-radius:6px;background:#0e1116"></iframe>')
+      : ('<p class="muted" style="font-size:0.82em">No 3D viewer is configured for this ' +
+         'workspace. Set <code>ui.viz_viewer_urls</code> (hosted) or ' +
+         '<code>ui.viz_viewer_bundle</code> (a local viewer package) in workspace.yaml.</p>');
     return '<div class="analyses-card">' +
       '<div class="analyses-card-head">' +
         '<strong>' + _esc(v.name || '3D model') + '</strong>' +
-        '<a class="btn-mini" href="' + _esc(src) + '" target="_blank" rel="noopener" title="Open full-window in a new tab">Open &#8599;</a>' +
+        (src ? ('<a class="btn-mini" href="' + _esc(src) + '" target="_blank" rel="noopener" title="Open full-window in a new tab">Open &#8599;</a>') : '') +
       '</div>' +
       (meta.length ? '<div class="muted" style="font-size:0.82em;margin:2px 0 6px">' + meta.join(' &middot; ') + '</div>' : '') +
       '<p class="muted" style="font-size:0.85em;line-height:1.45;margin:2px 0 8px">' + desc + '</p>' +
-      '<iframe class="viz-embed" src="' + _esc(src) + '" loading="lazy" ' +
-        'style="width:100%;height:460px;border:1px solid #2a313c;border-radius:6px;background:#0e1116"></iframe>' +
+      body +
     '</div>';
   }
 
@@ -2327,7 +2495,7 @@
       return;
     }
     // A target is keyed by `study` (a local study's exports) or `run` (a landed
-    // run's exports, e.g. a GovCloud compose analysis) — forward whichever is set.
+    // run's exports, e.g. a remote compose analysis) — forward whichever is set.
     var q = study ? '?study=' + encodeURIComponent(study)
           : (run ? '?run=' + encodeURIComponent(run) : '');
     var url = '/api/analysis-viewer/' + encodeURIComponent(uid) + '/launch' + q;
@@ -2362,16 +2530,18 @@
     return (window.__DASH_CONFIG__ || {}).mode === 'snapshot';
   }
 
-  // Build the parsimony-viewer src for a matched 3D study. Prefer a hosted
-  // viewer_url (assets on R2, dodging Pages rate-limits); else the bundled
-  // viewer pointed at the study's 3D models manifest.
-  function _build3dSrc(m) {
+  // Build the 3D-viewer src for a matched study. Prefer a hosted viewer_url
+  // (assets on R2, dodging Pages rate-limits); else, if the contributed viewer
+  // declares a bundle package, point the generic /contributed-viewer/<pkg>/
+  // route at the study's 3D models manifest. Returns null when neither exists.
+  function _build3dSrc(m, bundlePackage) {
     var base = _analysesBase();
     var ref = m.ref || m.study || '';
-    return m.viewer_url
-      ? m.viewer_url
-      : base + '/parsimony-viewer/index.html?models=' +
-          encodeURIComponent(base + '/api/study/' + encodeURIComponent(ref) + '/3d/models.json');
+    if (m.viewer_url) return m.viewer_url;
+    if (!bundlePackage) return null;
+    return base + '/contributed-viewer/' + encodeURIComponent(bundlePackage) +
+        '/index.html?models=' +
+        encodeURIComponent(base + '/api/study/' + encodeURIComponent(ref) + '/3d/models.json');
   }
 
   function _buildSimulariumSrc(m) {
@@ -2450,7 +2620,7 @@
   }
 
   // Open a tool's selected result full-window in a new tab. Per kind:
-  //   embed-3d       -> the (hosted or bundled) parsimony viewer for the study
+  //   embed-3d       -> the contributed 3D viewer (hosted viewer_url, else the
   //   launcher       -> the target's external href, else the live launch endpoint
   function _openTool(toolId, btn) {
     var t = _TOOLS_BY_ID[toolId]; if (!t) return;
@@ -2460,7 +2630,8 @@
     var idx = sel ? (parseInt(sel.value, 10) || 0) : 0;
     var m = items[idx] || items[0]; if (!m) return;
     if (t.kind === 'embed-3d') {
-      window.open(_build3dSrc(m), '_blank', 'noopener');
+      var src3d = _build3dSrc(m, t.bundle_package);
+      if (src3d) window.open(src3d, '_blank', 'noopener');
     } else if (t.kind === 'embed-simularium') {
       window.open(_buildSimulariumSrc(m), '_blank', 'noopener');
     } else {
@@ -2490,7 +2661,7 @@
     var countEl   = document.getElementById('viz-count');
     if (!container) return;
     // Tools-first Analysis Tools tab, backed by GET /api/analysis-tools: built-in
-    // tools (Parsimony Viewer) + external contributed viewers, each
+    // tools + contributed viewers (incl. the 3D viewer), each
     // capability-matched to the runs/studies that satisfy its `requires`. Snapshot
     // mode reads the static api/analysis-tools.json bundle file; live mode hits the
     // endpoint. Parse defensively via text() so a missing/HTML response degrades to
@@ -2510,7 +2681,7 @@
         data = data || {};
         var tools = data.tools || [];
         if (!tools.length) {
-          container.innerHTML = '<p class="empty-state">No analysis tools for this workspace. Tools are built-in (Parsimony Viewer) or contributed by the repo (a package\'s <code>workbench_viewers</code> module).</p>';
+          container.innerHTML = '<p class="empty-state">No analysis tools for this workspace. Tools are built in, or contributed by the repo (a package\'s <code>workbench_viewers</code> module).</p>';
           if (countEl) countEl.textContent = '';
           return;
         }
@@ -3609,7 +3780,7 @@
         ' title="Double-click to Explore (open the full card)">' +
       '<div class="reg-card-row">' +
         '<div class="reg-card-main">' +
-          '<div class="reg-card-head"><strong class="reg-card-name">' + esc(p.name) + '</strong>' + _procKindBadge(p.kind) + _procBridgeBadge(p) + defaultBadge + _regUseBadge(p) + _contractBadge(p.contract_audit) + '</div>' +
+          '<div class="reg-card-head"><strong class="reg-card-name">' + esc(p.name) + '</strong>' + _procKindBadge(p.kind) + _procBridgeBadge(p) + defaultBadge + _regUseBadge(p) + '</div>' +
           '<code class="reg-card-addr">' + addr + '</code>' +
           (short ? '<p class="reg-card-desc">' + esc(short) + '</p>' : '') +
         '</div>' +
@@ -3650,7 +3821,7 @@
       }).join('');
     }
     var bodyHead =
-      '<div class="loom-body-head"><span class="loom-name">' + _esc(p.name) + '</span>' + _procKindBadge(kind) + _regUseBadge(p) + _contractBadge(p.contract_audit) + '</div>' +
+      '<div class="loom-body-head"><span class="loom-name">' + _esc(p.name) + '</span>' + _procKindBadge(kind) + _regUseBadge(p) + '</div>' +
       '<code class="loom-addr">' + _esc(p.address || kind) + '</code>' +
       (desc ? '<p class="loom-desc">' + _esc(desc) + '</p>' : '');
 
@@ -3714,10 +3885,9 @@
   // (loaded before this file) so the "{ } JSON" button works on every page the
   // card mounts on, including the Study Detail Model tab. Bare references below
   // resolve to those globals.
-  // Contract-audit panel toggle — mirrors _toggleCompositeJson. The REAL
-  // composite audit is expensive (it builds the composite's core), so it's
-  // fetched lazily on first open from /api/composite-contract-audit and the
-  // header badge is back-patched with the real status once it lands.
+  // Wiring-audit panel toggle — mirrors _toggleCompositeJson. The audit is
+  // expensive (it builds the composite's core), so it's fetched lazily on first
+  // open from /api/composite-contract-audit.
   function _toggleCompositeContract(btn) {
     var card = btn.closest('.registry-entry-full'); if (!card) return;
     var panel = card.querySelector('[data-role="composite-contract"]'); if (!panel) return;
@@ -3728,7 +3898,7 @@
     panel._loaded = true;
     var id = card.getAttribute('data-address');
     var body = panel.querySelector('.pcard-contract-body');
-    if (body) body.innerHTML = '<span class="muted" style="font-size:0.85em">Auditing composite contracts… (building the core)</span>';
+    if (body) body.innerHTML = '<span class="muted" style="font-size:0.85em">Auditing composite wiring… (building the core)</span>';
     fetch('/api/composite-contract-audit?id=' + encodeURIComponent(id))
       .then(function (r) { return r.json(); })
       .then(function (a) {
@@ -3738,16 +3908,6 @@
             : '<pre>' + _esc(JSON.stringify(a, null, 2)) + '</pre>';
         }
         panel._audit = a;
-        // Back-patch the header badge so the at-a-glance status is now real,
-        // not the coreless "contract n/a" stub.
-        try {
-          var badge = card.querySelector('.contract-badge');
-          if (badge && a && a.status && typeof _contractBadge === 'function') {
-            var tmp = document.createElement('div');
-            tmp.innerHTML = _contractBadge(a);
-            if (tmp.firstChild) badge.replaceWith(tmp.firstChild);
-          }
-        } catch (e) { /* badge back-patch is best-effort */ }
       })
       .catch(function (e) {
         if (body) body.innerHTML = '<span class="loom-run-err">Audit failed: ' + _esc(String(e)) + '</span>';
@@ -3755,17 +3915,6 @@
       });
   }
   window._toggleCompositeContract = _toggleCompositeContract;
-  // Process-card contract toggle — the per-process audit is already inline on
-  // the card (pre-rendered into the panel), so this just reveals it. No fetch,
-  // no badge back-patch (the header badge is already the real status).
-  function _toggleProcessContract(btn) {
-    var card = btn.closest('.registry-entry-full'); if (!card) return;
-    var panel = card.querySelector('[data-role="process-contract"]'); if (!panel) return;
-    var show = panel.hidden;
-    panel.hidden = !show;
-    btn.classList.toggle('active', show);
-  }
-  window._toggleProcessContract = _toggleProcessContract;
 
   // In a ?popcard= window: strip the shell to just the single requested card.
   function _enterPopcardMode(address, kind) {
@@ -4011,10 +4160,9 @@
       '<div class="loom-card loom-card-stack loom-card-' + kind + '">' +
         '<div class="pcard-top">' +
           '<div class="pcard-header pcard-title" onclick="_pinCardTop(this)" title="Click to pin to top">' +
-            '<span class="loom-name">' + _esc(p.name) + '</span>' + kindBadge + _regUseBadge(p) + _contractBadge(p.contract_audit) +
+            '<span class="loom-name">' + _esc(p.name) + '</span>' + kindBadge + _regUseBadge(p) +
             '<code class="loom-addr">' + _esc(p.address || kind) + '</code>' +
             (/^(process|step)$/.test(kind) ? _processCodeBtn(p.address) : '') +
-            (p.contract_audit ? _processContractBtn() : '') +
             _cardPopoutBtn(p.address || kind, kind) +
           '</div>' +
           '<div class="pcard-summary">' +
@@ -4024,14 +4172,6 @@
               (desc ? '<p class="loom-desc pcard-desc-clamp" onclick="_pcardToggleDesc(this)" title="Click to expand / collapse">' + _esc(desc) + '</p>' : '') +
             '</div>' +
           '</div>' +
-          // Contract-audit panel — hidden until the header "§ Contract" button
-          // toggles it (mirrors the composite card). The per-process audit is
-          // already inline on the card, so it's pre-rendered here, not fetched.
-          (p.contract_audit
-            ? '<div class="pcard-json-view pcard-contract-view" data-role="process-contract" hidden>' +
-                '<div class="pcard-contract-body">' + _contractPanelBody(p.contract_audit) + '</div>' +
-              '</div>'
-            : '') +
         '</div>' +
         '<div class="pcard-acc">' +
           section('configure', 'Configure', '<span class="pcard-sec-count">' + nCfg + '</span><span class="pcard-config-chips" data-role="config-chips" hidden></span>', configBody, { resizable: true }) +
@@ -4228,7 +4368,7 @@
   // Composite Explorer Test Run panel) -- before a remote-pinned deployment
   // dispatches to AWS Batch, fetch the server-resolved
   // repo/branch/commit/simulator_id and require explicit confirmation
-  // (mirrors study-detail.js's _dispatchRemotePinned), so a workspace-
+  // (mirrors _dispatchRemotePinned in the launch plugin script), so a workspace-
   // identity mismatch is caught here, before money gets spent, not
   // discovered afterward via aws batch describe-jobs. A plain local-engine
   // run (unchanged, pre-existing behavior) fires with no confirm.
@@ -5313,61 +5453,6 @@
     _renderRegistryNewActions(kind);
   }
   window._setRegistryTab = _setRegistryTab;
-
-  // <find-candidates>
-  // Registry "Find candidates" panel: enter a face, list registered processes
-  // that fit it via POST /api/find-candidates. The renderer is pure.
-  function _renderCandidateList(result) {
-    var r = result || {};
-    var note = function (t) { return '<div class="fc-note fc-muted">' + t + '</div>'; };
-    if (r.status === 'unavailable') return note('contract matching unavailable');
-    if (r.status === 'error') return note('Error: ' + _esc(r.error || 'request failed'));
-    var cands = Array.isArray(r.candidates) ? r.candidates : [];
-    if (!cands.length) return note('no matching processes');
-    return '<ul class="fc-list">' + cands.map(function (c) {
-      var full = c.match === 'full';
-      var tag = '<span class="fc-tag ' + (full ? 'fc-full' : 'fc-near') + '">' +
-        (full ? 'full' : 'near-miss') + '</span>';
-      var fails = (!full && Array.isArray(c.fails) && c.fails.length)
-        ? '<ul class="fc-fails">' + c.fails.map(function (f) {
-            return '<li><code>' + _esc(f && f.condition) + '</code> ' + _esc(f && f.reason) + '</li>';
-          }).join('') + '</ul>'
-        : '';
-      return '<li class="fc-item"><code class="fc-addr">' + _esc(c.address) + '</code> ' + tag + fails + '</li>';
-    }).join('') + '</ul>';
-  }
-  window._renderCandidateList = _renderCandidateList;
-
-  function _parsePortSpec(text) {
-    var out = {};
-    String(text || '').split(',').forEach(function (tok) {
-      tok = tok.trim();
-      if (!tok) return;
-      var i = tok.indexOf(':');
-      if (i < 0) out[tok] = 'any';
-      else out[tok.slice(0, i).trim()] = tok.slice(i + 1).trim() || 'any';
-    });
-    return out;
-  }
-
-  function _findCandidates() {
-    var inEl = document.getElementById('fc-inputs');
-    var outEl = document.getElementById('fc-outputs');
-    var res = document.getElementById('fc-results');
-    if (!res) return;
-    res.innerHTML = '<div class="fc-note fc-muted">Searching&hellip;</div>';
-    var body = { inputs: _parsePortSpec(inEl && inEl.value), outputs: _parsePortSpec(outEl && outEl.value) };
-    try {
-      apiFetch('POST', '/api/find-candidates', body)
-        .then(function (r) { return r.json(); })
-        .then(function (j) { res.innerHTML = _renderCandidateList(j); })
-        .catch(function (e) { res.innerHTML = _renderCandidateList({ status: 'error', error: String(e && e.message || e) }); });
-    } catch (e) {
-      res.innerHTML = _renderCandidateList({ status: 'error', error: String(e && e.message || e) });
-    }
-  }
-  window._findCandidates = _findCandidates;
-  // </find-candidates>
 
 
   // Context-aware "+ New" buttons for the active sub-tab. Only process/step and
@@ -7430,15 +7515,38 @@
   }
   window._installFromMarketplace = _installFromMarketplace;
 
+  // Non-blocking confirm gate: uses the shared _confirmModal when present
+  // (doesn't freeze the event loop / browser automation — #1051), and falls
+  // back to native confirm() otherwise. Always returns a Promise<bool>.
+  function _confirmGate(message) {
+    if (typeof window._confirmModal === 'function') return window._confirmModal(message);
+    return Promise.resolve(window.confirm(message));
+  }
+  window._confirmGate = _confirmGate;
+
   function _proceedWithCatalogInstall(name, opts) {
-    if (!confirm("Install '" + name + "' on the active investigation branch?\n\nThis adds a submodule, pip installs the package, and appends it to pyproject.toml. Requires an active investigation branch.")) return;
+    _confirmGate("Install '" + name + "'?\n\nThis adds a submodule, pip installs the package, and appends it to pyproject.toml. If a workstream is active the change is committed to its branch.").then(function (_ok) {
+    if (!_ok) return;
     var body = {name: name};
     if (opts && opts.skip_system_deps_check) body.skip_system_deps_check = true;
     if (opts && opts.full_repo) body.full_repo = true;
+    // In-page progress: the install (submodule clone + pip install) routinely
+    // takes a minute. Without this the page sits silent after the confirm, with
+    // no sign anything is happening (issue #1618, bug 7). A persistent toast
+    // (durationMs:0 → until we clear it) is non-blocking, so it also doesn't
+    // freeze browser automation the way the old alert() did (#1051).
+    var _progress = (typeof _showToast === 'function')
+      ? _showToast('Installing ' + name + '… (cloning + pip install — this can take a minute)', { durationMs: 0 })
+      : null;
+    function _clearProgress() {
+      if (_progress && _progress.parentNode) _progress.parentNode.removeChild(_progress);
+      _progress = null;
+    }
     apiFetch('POST', '/api/catalog-install', body)
       .then(function(r) { return r.json().then(function(j) { return [r.ok, r.status, j]; }); })
       .then(function(parts) {
         var ok = parts[0], status = parts[1], json = parts[2];
+        _clearProgress();
         if (!ok) {
           // 409 = system-deps gate (defence-in-depth — UI should have
           // already shown the modal; re-show if it happens anyway).
@@ -7457,19 +7565,27 @@
             }, opts);
             return;
           }
-          alert(_renderInstallError(json));
+          var em = _renderInstallError(json);
+          // A rolled-back install leaves nothing staged — say so, so the user
+          // knows the Studies panel isn't about to fill with a half-installed
+          // module (issue #1618, bug 7).
+          if (json && json.rolled_back) em += "\n\n(Partial install rolled back — nothing was left staged.)";
+          if (typeof _showToast === 'function') _showToast(em, { danger: true }); else alert(em);
           return;
         }
-        var msg = "Installed " + name + ".\nCommit: " + (json.commit || 'n/a');
-        alert(msg);
+        var msg = "Installed " + name + "." + (json.commit ? "\nCommit: " + json.commit : '');
+        if (typeof _showToast === 'function') _showToast(msg); else alert(msg);
         window._registryLoaded = false;  // force registry reload on next switch
         apiFetch('POST', '/api/render').finally(function() {
           location.reload();
         });
       })
       .catch(function(err) {
-        alert("Network error: " + String(err));
+        _clearProgress();
+        var nm = "Network error: " + String(err);
+        if (typeof _showToast === 'function') _showToast(nm, { danger: true }); else alert(nm);
       });
+    });
   }
   window._proceedWithCatalogInstall = _proceedWithCatalogInstall;
 
@@ -8212,8 +8328,8 @@
 
   function _vivToggleRail() {
     // Flip the rail between the collapsed icon bar and the expanded, labelled
-    // sidebar, persisting the choice. The expanded width + edge-drag resize are
-    // driven by _vivRailResizeStart / the saved vivarium.rail-width.
+    // sidebar, persisting the choice. The expanded width restores the last
+    // drag-resized width (_vivRailSavedWidth), or _RAIL_NORMAL on first use.
     var rail = document.getElementById('viv-rail');
     if (!rail) return;
     var collapsed = !rail.classList.contains('viv-rail-collapsed');  // target state
@@ -8254,13 +8370,13 @@
   window._vivToggleRailSearch = _vivToggleRailSearch;
 
   function _vivRestoreRailState() {
-    // Restore the rail's collapsed/expanded choice (defaults to collapsed for a
-    // first visit). The expanded width comes from the saved vivarium.rail-width;
-    // the header toggle + edge-drag keep both in sync.
+    // Restore the rail's collapsed/expanded choice. Defaults to EXPANDED (labelled
+    // sidebar) on a first visit so newcomers can read the nav; only an explicit
+    // saved '1' collapses it. The expanded width is a fixed constant (no drag).
     var rail = document.getElementById('viv-rail');
     if (!rail) return;
-    var collapsed = true;
-    try { collapsed = localStorage.getItem('vivarium.rail-collapsed') !== '0'; } catch (e) { /* private mode */ }
+    var collapsed = false;
+    try { collapsed = localStorage.getItem('vivarium.rail-collapsed') === '1'; } catch (e) { /* private mode */ }
     if (collapsed) {
       rail.classList.add('viv-rail-collapsed');
     } else {
@@ -8310,12 +8426,14 @@
   }
   window._vivInitRailFlyoutPositioning = _vivInitRailFlyoutPositioning;
 
-  // ---- Rail resize (drag the right edge to widen; snap to normal; drag
-  //      narrower to snap into the collapsed bar) ----------------------------
+  // ---- Rail resize (drag the right edge to NARROW the rail; drag it in past the
+  //      floor to snap into the collapsed icon bar) --------------------------
+  // The handle drags the rail narrower to reclaim space and, pulled all the way in,
+  // collapses it. It can widen a little past normal for long names, but is capped
+  // well short of eating the viewport (the old 560px cap felt "too wide").
   var _RAIL_NORMAL = 240;      // the "normal" snap width (matches CSS default)
   var _RAIL_MIN = 160;         // expanded floor (~2/3 of normal) — narrower than this collapses
-  var _RAIL_MAX = 560;         // don't let the rail eat the whole viewport
-  var _RAIL_COLLAPSE_AT = 140; // drag below this (px from left edge) → collapse
+  var _RAIL_MAX = 320;         // modest widen cap — keep the rail from getting too wide
   var _RAIL_SNAP = 28;         // within this of normal → snap to exactly normal
 
   function _vivRailSavedWidth() {
@@ -9902,14 +10020,14 @@
   }
   window._showInvestigationList = _showInvestigationList;
 
-  // ── Investigations/Studies semantic zoom ────────────────────────────────
-  // Same 3-level framework as the Registry: 'table' (dense, sortable-looking)
-  // | 'cards' (grid — the historical default) | 'full' (cards with detail
-  // expanded). Drives BOTH the Investigations and Studies browse tabs.
-  // Persists in localStorage, mirroring window._registryZoom.
+  // ── Investigations/Studies view ─────────────────────────────────────────
+  // Two views: 'table' (the List view — dense, sortable; the DEFAULT) and
+  // 'cards' (grid). Drives BOTH the Investigations and Studies browse tabs.
+  // Persists in localStorage. (The old 'full' detail view was removed; any
+  // persisted 'full' falls back to the List default below.)
   window._isetZoom = (function () {
     var z; try { z = localStorage.getItem('viv.isetZoom'); } catch (e) { z = null; }
-    return (z === 'table' || z === 'cards' || z === 'full') ? z : 'cards';
+    return (z === 'table' || z === 'cards') ? z : 'table';
   })();
   function _syncIsetToolbar() {
     // Scoped to [data-izoom] — .reg-zoom-btn is shared with the Registry zoom
@@ -9935,11 +10053,10 @@
     _renderInvestigationSets();
   }
   window._setIsetZoom = _setIsetZoom;
-  // Double-click a card → zoom in one level (table → cards → full), mirroring
-  // the Registry's _zoomInOn.
+  // Double-click a card → switch to the other view (table ↔ cards).
   function _isetZoomIn() {
-    var order = ['table', 'cards', 'full'];
-    var i = order.indexOf(window._isetZoom || 'cards');
+    var order = ['table', 'cards'];
+    var i = order.indexOf(window._isetZoom || 'table');
     _setIsetZoom(order[Math.min(order.length - 1, i + 1)]);
   }
   window._isetZoomIn = _isetZoomIn;
@@ -9950,7 +10067,7 @@
     _syncIsetToolbar();
     if (window._isetBrowseTab === 'studies') {
       if (window._isetZoom === 'table') _renderStudyBrowseTable(list);
-      else _renderStudyBrowseCards(list, window._isetZoom === 'full');
+      else _renderStudyBrowseCards(list, false);
       return;
     }
     if (!window._isetIndex.length) {
@@ -10116,15 +10233,7 @@
           '<span class="iset-studies-toggle" role="button" tabindex="0" ' +
             'onclick="event.stopPropagation();var d=this.closest(\'.investigation-set-card\').querySelector(\'.iset-studies-detail\');var open=d.style.display===\'none\';d.style.display=open?\'block\':\'none\';this.querySelector(\'.iset-chev\').textContent=open?\'▾\':\'▸\'" ' +
             'style="flex:1;cursor:pointer;user-select:none"><strong>' + iset.n_studies + '</strong> stud' + (iset.n_studies === 1 ? 'y' : 'ies') + ' <span class="iset-chev" style="color:#94a3b8">' + (full ? '▾' : '▸') + '</span></span>' +
-          '<a href="#" title="Download the rendered HTML report for this investigation" ' +
-            'onclick="window._vivReportFromCard(event,\'' + _esc(iset.name) + '\');return false;" ' +
-            'style="color:#3b82f6;text-decoration:none;white-space:nowrap">↓ report</a>' +
-          '<a href="#" title="Download the runnable notebook for this investigation" ' +
-            'onclick="window._vivNotebookFromCard(event,\'' + _esc(iset.name) + '\');return false;" ' +
-            'style="color:#3b82f6;text-decoration:none;white-space:nowrap">↓ notebook</a>' +
-          (iset.n_figures ? '<a href="#" title="Download all figures for this investigation (studies figures + post-study composites), as a zip" ' +
-            'onclick="window._vivFiguresFromCard(event,\'' + _esc(iset.name) + '\');return false;" ' +
-            'style="color:#3b82f6;text-decoration:none;white-space:nowrap">↓ figures</a>' : '') +
+          '<span style="white-space:nowrap">' + window._vivInvLinksHtml(iset) + '</span>' +
         '</div>' +
         '<div class="iset-studies-detail" style="display:' + (full ? 'block' : 'none') + ';margin-top:8px;border-top:1px solid #f1f5f9;padding-top:6px">' + (studyRows || '<span class="muted" style="font-size:0.85em">No studies.</span>') + '</div>' +
         // "Run this investigation in your terminal" chip (like the composite/process card).
@@ -10133,7 +10242,7 @@
     }
 
     var GRID = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px;margin:6px 0 14px';
-    var _isetFull = (window._isetZoom === 'full');
+    var _isetFull = false;  // the 'full' detail view was removed; cards render compact.
     // Render a grid of investigation cards. A header is drawn only when `label`
     // is given; called with '' it yields one flat, headerless grid (the single
     // combined list — no Active/Closed section split).
@@ -10446,6 +10555,100 @@
       }).catch(function () { /* optional surface */ });
   }
   window._vivLoadEvidence = _vivLoadEvidence;
+
+  // ---- RFC-0007 validation panel (GET /api/validation-panel/{slug}) ----
+  // Census header, type x scope coverage matrix, grouped records, and the
+  // epistemic-separation check. Renders nothing when the response is empty
+  // (snapshot / published bundle / engine predating the validation layer).
+  function _vpRender(d) {
+    var types = d.types || [], scopes = d.scopes || [];
+    var execOnly = {};
+    (d.execution_only_types || []).forEach(function (t) { execOnly[t] = true; });
+    var c = d.census || {};
+    var h = '<div class="vp-head"><strong>Validation</strong>';
+    ['passed', 'failed', 'inconclusive', 'error'].forEach(function (k) {
+      h += '<span class="vp-chip vp-' + k + '">' + (c[k] || 0) + ' ' + k + '</span>';
+    });
+    h += '<span class="vp-chip">pass rate ' + Math.round((d.pass_rate || 0) * 100) + '%</span>';
+    h += '<span class="vp-chip' + (d.stale_count ? ' vp-stale' : '') + '">' + (d.stale_count || 0) + ' stale</span></div>';
+
+    var recs = d.records || [];
+    var counts = {};
+    recs.forEach(function (r) { var k = r.type + '|' + r.scope; counts[k] = (counts[k] || 0) + 1; });
+    h += '<table class="vp-matrix"><thead><tr><th></th>';
+    scopes.forEach(function (sc) { h += '<th>' + _esc(sc) + '</th>'; });
+    h += '</tr></thead><tbody>';
+    types.forEach(function (t) {
+      h += '<tr><th class="' + (execOnly[t] ? 'vp-exec' : '') + '" title="' +
+        (execOnly[t] ? 'Execution-only: cannot carry a scientific judgment' : 'May assert a scientific judgment') + '">' +
+        _esc(t) + (execOnly[t] ? ' *' : '') + '</th>';
+      scopes.forEach(function (sc) {
+        var ids = ((d.coverage || {})[t] || {})[sc] || [];
+        var n = counts[t + '|' + sc] || 0;
+        h += ids.length
+          ? '<td class="vp-cell-on" title="' + _esc(ids.join(', ')) + '">' + ids.length + ' validator' + (ids.length > 1 ? 's' : '') +
+            (n ? ' / ' + n + ' rec' : '') + '</td>'
+          : '<td class="vp-cell-off">—</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table><div class="vp-note">* execution-only type (structural / computational / visual)</div>';
+
+    var groups = {};
+    recs.forEach(function (r) {
+      var k = r.type + ' › ' + r.scope;
+      (groups[k] = groups[k] || []).push(r);
+    });
+    Object.keys(groups).sort().forEach(function (k) {
+      h += '<details class="vp-group"><summary>' + _esc(k) + ' (' + groups[k].length + ')</summary>';
+      groups[k].forEach(function (r) {
+        var j = r.scientific_judgment;
+        var jtxt = (j === null || j === undefined)
+          ? (execOnly[r.type] ? 'n/a — execution-only' : 'no judgment') : String(j);
+        h += '<details class="vp-rec"><summary><span class="vp-target">' + _esc(r.target) + '</span> ' +
+          '<span class="vp-chip vp-' + _esc(r.execution_status) + '">' + _esc(r.execution_status) + '</span> ' +
+          '<span class="vp-judg">' + _esc(jtxt) + '</span></summary>' +
+          '<pre class="vp-detail">' + _esc(JSON.stringify({findings: r.findings, evidence: r.evidence, criteria: r.criteria}, null, 2)) +
+          '</pre></details>';
+      });
+      h += '</details>';
+    });
+
+    var v = d.violations || [];
+    if (v.length) {
+      h += '<div class="vp-viol"><strong>Epistemic-separation violations (' + v.length + ')</strong><ul>';
+      v.forEach(function (x) { h += '<li>' + _esc(typeof x === 'string' ? x : JSON.stringify(x)) + '</li>'; });
+      h += '</ul></div>';
+    } else {
+      h += '<div class="vp-ok">Separation holds: no execution-only validator asserts a scientific judgment.</div>';
+    }
+    return h;
+  }
+  // Fills the Validation TAB (#inv-validation-mount) in the investigation-detail
+  // tab strip. (Was a standalone collapsible labeled "Validation (RFC-0007)";
+  // now it's just another tab, so the RFC label is dropped.)
+  function _vivLoadValidationPanel(slug) {
+    if (!slug) return;
+    var mount = function () { return document.getElementById('inv-validation-mount'); };
+    if ((window.__DASH_CONFIG__ || {}).mode === 'snapshot') {
+      var ms = mount();
+      if (ms) ms.innerHTML = '<div class="muted" style="padding:6px 2px">The validation panel is available in the live workbench.</div>';
+      return;
+    }
+    fetch('/api/validation-panel/' + encodeURIComponent(slug), {headers: {Accept: 'application/json'}})
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (window._currentIset !== slug) return;
+        var m = mount();
+        if (!m) return;
+        if (!d || !d.types || !d.records) {
+          m.innerHTML = '<div class="muted" style="padding:6px 2px">No validation records for this investigation yet.</div>';
+          return;
+        }
+        m.innerHTML = _vpRender(d);
+      }).catch(function () { /* leave the loading note in place */ });
+  }
+  window._vivLoadValidationPanel = _vivLoadValidationPanel;
   window._vivPaintEvidence = _vivPaintEvidence;
 
   // The full Asks / Finds / plan body, from the study DATA (not the band-limited
@@ -10686,8 +10889,49 @@
       _applyInvOverviewState();
     }
     if (typeof _openInvestigationDetail === 'function') _openInvestigationDetail(name);
+    _renderStudyCompletenessBanner(name, mountEl);
   }
   window._renderInvestigationDetailInto = _renderInvestigationDetailInto;
+
+  // Study-completeness gate banner (published read-only bundle only). publish.py
+  // bakes api/study-completeness/<inv>.json listing studies that LOOK done but are
+  // inconsistent (claims done with no runs; completed but verdict pending; declares
+  // a composite that doesn't resolve). A loud, non-blocking strip at the top of the
+  // investigation page so a reviewer doesn't read it as complete. Removed when the
+  // investigation is clean or in live mode (DataSource returns null).
+  function _renderStudyCompletenessBanner(name, mountEl) {
+    var host = mountEl || document.getElementById('ws-context') || document.body;
+    var existing = document.getElementById('inv-completeness-banner');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    if (!(window.DataSource && window.DataSource.loadStudyCompleteness)) return;
+    window.DataSource.loadStudyCompleteness(name).then(function (d) {
+      if (window._currentIset && window._currentIset !== name) return;  // stale
+      var items = (d && d.findings) || [];
+      if (!items.length) return;
+      // One line per flagged study (deduped), with the plain-English reason.
+      var _label = {
+        status_claims_done_no_runs_recorded: 'claims done but records no runs',
+        completed_but_verdict_pending: 'marked complete but its verdict is still pending',
+        declared_composite_unresolved: 'declares a model composite that does not resolve'
+      };
+      var rows = items.map(function (f) {
+        return '<li><strong>' + _esc(f.study || '?') + '</strong> — ' +
+          _esc(_label[f.check] || f.check || 'incomplete') + '</li>';
+      }).join('');
+      var banner = document.createElement('div');
+      banner.id = 'inv-completeness-banner';
+      banner.setAttribute('role', 'status');
+      banner.style.cssText = 'margin:0 0 10px;padding:9px 12px;border:1px solid #f59e0b;' +
+        'border-left-width:4px;border-radius:6px;background:#fffbeb;color:#92400e;' +
+        'font-size:0.9em;line-height:1.4';
+      banner.innerHTML =
+        '<div style="font-weight:700;margin-bottom:3px">⚠ ' + items.length +
+          ' stud' + (items.length === 1 ? 'y looks' : 'ies look') + ' done but need attention</div>' +
+        '<ul style="margin:2px 0 0;padding-left:18px">' + rows + '</ul>';
+      host.insertBefore(banner, host.firstChild);
+    }).catch(function () { /* best-effort; no banner on failure */ });
+  }
+  window._renderStudyCompletenessBanner = _renderStudyCompletenessBanner;
 
   // Report / Notebook actions in the workspace header (#ws-actions), moved off
   // the detail-view header (hidden by _renderInvestigationDetailInto).
@@ -10711,21 +10955,33 @@
     // snapshot — leaving the ↓ figures button greyed even when figures.zip is
     // baked. DataSource is always present in a published bundle.
     var _mi = 'class="btn-mini" role="menuitem" style="display:block;width:100%;text-align:left;border:none;background:transparent"';
+    // Section header inside the menu (groups the Open / Download choices per artifact).
+    var _sec = function (t) {
+      return '<div style="padding:6px 8px 2px;font-size:0.72em;font-weight:700;text-transform:uppercase;' +
+        'letter-spacing:0.04em;color:#94a3b8">' + t + '</div>';
+    };
+    // Figures: Open (gallery) + Download (zip). Starts disabled; upgraded async
+    // below when the investigation actually has figures.
     var _figuresMenuItem =
       '<span id="ws-actions-figures">' +
         '<button class="btn-mini" role="menuitem" disabled ' +
           'title="No figures yet — run this investigation\'s studies to generate them" ' +
-          'style="display:block;width:100%;text-align:left;border:none;background:transparent;opacity:0.5;cursor:not-allowed">Figures (none yet)</button>' +
+          'style="display:block;width:100%;text-align:left;border:none;background:transparent;opacity:0.5;cursor:not-allowed">No figures yet</button>' +
       '</span>';
     var _exportDd =
       '<span class="inv-report-wrap" style="position:relative;display:inline-flex">' +
         '<button class="btn-mini" id="inv-report-btn" aria-haspopup="true" ' +
-          'aria-label="Export" title="Export — report, notebook, or figures" onclick="_toggleInvReportMenu(event)"><span aria-hidden="true">↓</span> Export ▾</button>' +
-        '<div id="inv-report-menu" role="menu" style="display:none;position:absolute;left:0;top:100%;margin-top:4px;' +
-          'background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.14);z-index:70;min-width:170px;padding:4px">' +
-          '<button ' + _mi + ' onclick="_closeInvReportMenu();_downloadInvestigationReport(null,\'html\')">HTML report</button>' +
-          '<button ' + _mi + ' onclick="_closeInvReportMenu();_downloadInvestigationReport(null,\'pdf\')">PDF report</button>' +
-          '<button ' + _mi + ' onclick="_closeInvReportMenu();_downloadInvestigationNotebook()">Notebook</button>' +
+          'aria-label="Shortcuts" title="Shortcuts — open in the browser or download (report, notebook, figures)" onclick="_toggleInvReportMenu(event)">Shortcuts ▾</button>' +
+        '<div id="inv-report-menu" role="menu" style="display:none;position:absolute;right:0;left:auto;top:100%;margin-top:4px;' +
+          'background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.14);z-index:70;min-width:190px;padding:4px">' +
+          _sec('Report') +
+          '<button ' + _mi + ' onclick="_closeInvReportMenu();window._vivReportOpen(event)">Open in browser</button>' +
+          '<button ' + _mi + ' onclick="_closeInvReportMenu();_downloadInvestigationReport(null,\'html\')">Download HTML</button>' +
+          '<button ' + _mi + ' onclick="_closeInvReportMenu();_downloadInvestigationReport(null,\'pdf\')">Download PDF</button>' +
+          _sec('Notebook') +
+          '<button ' + _mi + ' onclick="_closeInvReportMenu();window._vivNotebookOpen(event)">Open in browser</button>' +
+          '<button ' + _mi + ' onclick="_closeInvReportMenu();_downloadInvestigationNotebook()">Download .ipynb</button>' +
+          _sec('Figures') +
           _figuresMenuItem +
         '</div>' +
       '</span> ';
@@ -10744,12 +11000,14 @@
           var me = ((j && j.investigations) || []).filter(function (i) { return i.name === name; })[0];
           var host = document.getElementById('ws-actions-figures');
           if (me && me.n_figures && host) {
-            host.innerHTML = '<button class="btn-mini" role="menuitem" ' +
-              'style="display:block;width:100%;text-align:left;border:none;background:transparent" ' +
-              'onclick="_closeInvReportMenu();window._vivFiguresFromCard(event,\'' + _esc(name) + '\')" ' +
-              'title="Download all figures (studies figures + post-study composites) as a zip">Figures (zip)</button>';
+            var _row = 'class="btn-mini" role="menuitem" style="display:block;width:100%;text-align:left;border:none;background:transparent"';
+            host.innerHTML =
+              '<button ' + _row + ' onclick="_closeInvReportMenu();window._vivFiguresOpen(event,\'' + _esc(name) + '\')" ' +
+                'title="See all figures in a new browser tab">Open in browser</button>' +
+              '<button ' + _row + ' onclick="_closeInvReportMenu();window._vivFiguresFromCard(event,\'' + _esc(name) + '\')" ' +
+                'title="Download all figures (studies figures + post-study composites) as a zip">Download (zip)</button>';
           }
-          // else: leave the disabled/greyed ↓ figures in place.
+          // else: leave the disabled/greyed "No figures yet" in place.
         }).catch(function () {});
     }
   }
@@ -10827,8 +11085,11 @@
   window._openAuditReport = _openAuditReport;
 
   // mode: 'investigation' | 'study' (explicit from the header cluster); falls
-  // back to the active browse tab when omitted.
-  function _openBrowseCreate(mode) {
+  // back to the active browse tab when omitted. presetInv (study mode only):
+  // slug of the investigation to pre-select in the dropdown, so "+ Add a study"
+  // from an investigation's own empty state lands on that investigation instead
+  // of defaulting to the first in the list (issue #1618, §1).
+  function _openBrowseCreate(mode, presetInv) {
     var isStudy = mode ? (mode === 'study') : (window._isetBrowseTab === 'studies');
     window._browseCreateMode = isStudy ? 'study' : 'investigation';
     document.getElementById('browse-create-title').textContent = isStudy ? 'New study' : 'New investigation';
@@ -10837,14 +11098,17 @@
       ? 'Describe the study — the question you want to answer'
       : 'Describe the investigation — the question you want to answer';
     document.getElementById('browse-create-inv-row').style.display = isStudy ? '' : 'none';
+    var sel = document.getElementById('browse-create-inv');
     if (isStudy) {
-      var sel = document.getElementById('browse-create-inv');
       sel.innerHTML = (window._isetIndex || []).map(function (i) {
         return '<option value="' + _esc(i.name) + '">' + _esc(i.title || i.name) + '</option>';
       }).join('');
     }
     var form = document.getElementById('form-browse-create');
     form.reset();
+    // Apply the preset AFTER form.reset() (reset would otherwise snap the
+    // select back to its first option).
+    if (isStudy && presetInv && sel) sel.value = presetInv;
     var nameInput = form.querySelector('[name=name]');
     if (nameInput) nameInput._touched = false;
     form.querySelector('.form-error').textContent = '';
@@ -10878,6 +11142,10 @@
           closeModal('modal-browse-create');
           window._investigationsLoaded = false;
           if (typeof _loadInvestigations === 'function') _loadInvestigations();
+          // Also refresh the iset index (bug 2): _loadInvestigations only
+          // reloads the flat study list, leaving the Studies panel / rail /
+          // dropdown showing stale data until a full reload.
+          if (typeof _loadInvestigationSets === 'function') _loadInvestigationSets();
           if (typeof _vivOpenInvestigationFromRail === 'function') _vivOpenInvestigationFromRail(name);
         });
     } else {
@@ -10886,14 +11154,18 @@
         .then(function (p) {
           if (!p[0]) { errEl.textContent = p[1].error || 'Create failed.'; return; }
           var created = (p[1] && p[1].name) || name;
-          // Seed the question on the scaffolded study (best-effort).
-          apiFetch('PATCH', '/api/study/' + encodeURIComponent(created), { narrative: { path: 'purpose.question', value: prompt } })
-            .catch(function () {}).then(function () {
-              closeModal('modal-browse-create');
-              window._investigationsLoaded = false;
-              if (typeof _loadInvestigations === 'function') _loadInvestigations();
-              _openStudyEmbeddedNewTab(created);
-            });
+          // The question is now persisted server-side by study-create (issue
+          // #1618, bug 1) — it writes a live top-level `question:` on the
+          // scaffold. The old best-effort PATCH to `purpose.question` wrote the
+          // wrong (non-canonical, non-allowlisted) path and silently failed.
+          closeModal('modal-browse-create');
+          window._investigationsLoaded = false;
+          if (typeof _loadInvestigations === 'function') _loadInvestigations();
+          // Refresh the iset index too so the parent investigation's study
+          // count + Studies panel reflect the new study immediately, instead of
+          // "0 · No studies" until reload (issue #1618, bug 2).
+          if (typeof _loadInvestigationSets === 'function') _loadInvestigationSets();
+          _openStudyEmbeddedNewTab(created);
         });
     }
   }
@@ -11075,7 +11347,7 @@
       mountEl.innerHTML = '<p class="empty-state">No investigations declared. Author one at <code>investigations/&lt;name&gt;/investigation.yaml</code>.</p>';
       return;
     }
-    var th = [['Name', 'left'], ['Status', 'left'], ['Studies', 'right'], ['Question', 'left'], ['Links', 'left']]
+    var th = [['Name', 'left'], ['Status', 'left'], ['Studies', 'right'], ['Question', 'left'], ['Shortcuts', 'left']]
       .map(function (c) {
         return '<th style="text-align:' + c[1] + ';position:sticky;top:0;background:#f8fafc;padding:7px 10px;' +
           'font-size:0.78em;text-transform:uppercase;letter-spacing:0.03em;color:#475569;' +
@@ -11109,15 +11381,7 @@
         '<td style="padding:7px 10px;text-align:right;color:' + (iset.n_studies ? '#1e293b' : '#cbd5e1') + '">' + (iset.n_studies || 0) + '</td>' +
         '<td style="padding:7px 10px;color:#64748b">' + (q ? _esc(q) : '<span style="color:#cbd5e1">—</span>') + '</td>' +
         '<td style="padding:7px 10px;white-space:nowrap;font-size:0.85em">' +
-          '<a href="#" title="Download the rendered HTML report for this investigation" ' +
-            'onclick="window._vivReportFromCard(event,\'' + _esc(iset.name) + '\');return false;" ' +
-            'style="color:#3b82f6;text-decoration:none;margin-right:10px">↓ report</a>' +
-          '<a href="#" title="Download the runnable notebook for this investigation" ' +
-            'onclick="window._vivNotebookFromCard(event,\'' + _esc(iset.name) + '\');return false;" ' +
-            'style="color:#3b82f6;text-decoration:none">↓ notebook</a>' +
-          (iset.n_figures ? '<a href="#" title="Download all figures for this investigation (studies figures + post-study composites), as a zip" ' +
-            'onclick="window._vivFiguresFromCard(event,\'' + _esc(iset.name) + '\');return false;" ' +
-            'style="color:#3b82f6;text-decoration:none;margin-left:10px">↓ figures</a>' : '') +
+          window._vivInvLinksHtml(iset) +
         '</td>' +
         '</tr>';
     }).join('');
@@ -11824,6 +12088,17 @@
         badge: _nDec ? (_nDec + ' needed') : 'all clear', attention: _nDec > 0 });
     }
 
+    // Validation (RFC-0007 content, label dropped) — filled async by
+    // _vivLoadValidationPanel into #inv-validation-mount once the panel loads.
+    tabs.push({ id: 'validation', label: 'Validation',
+      html: '<div id="inv-validation-mount" class="muted" style="padding:8px 2px;font-size:0.92em">Loading validation…</div>' });
+
+    // Needs attention — the deterministic needs-attention scan, moved here from a
+    // top-bar chip. Filled async by _renderInvNeedsAttention into #inv-attention-mount
+    // (which also sets this tab's badge).
+    tabs.push({ id: 'attention', label: 'Needs attention',
+      html: '<div id="inv-attention-mount" class="muted" style="padding:8px 2px;font-size:0.92em">Scanning…</div>' });
+
     // Overview is pushed first, so it is the default (active) tab via the i===0
     // rule below; every other tab (Verdict, Background, …) is reached by a click.
     if (tabs.length) {
@@ -12053,6 +12328,7 @@
       .then(function(d) {
         window._currentIsetData = d;
         try { _vivLoadEvidence(name); } catch (_) {}
+        try { _vivLoadValidationPanel(name); } catch (_) {}
         document.getElementById('investigation-detail-title').textContent = d.title || d.name;
         // Also refresh the VISIBLE chrome header (#ws-title) from the authoritative
         // detail payload. _showInvestigationWorkspace set it from _isetIndex, which
@@ -12127,7 +12403,30 @@
         _renderInvNeedsAttention(name);
       })
       .catch(function(err) {
-        document.getElementById('investigation-detail-description').textContent = 'Failed to load: ' + err;
+        // The detail payload failed to load (a transient network blip survives the
+        // DataSource retries, or a real error). Do NOT leave the previously-opened
+        // investigation's graph on screen — clear it so it can't be mistaken for
+        // THIS investigation, and offer a one-click retry.
+        try {
+          var _n = document.getElementById('investigation-dag-nodes');
+          var _e = document.getElementById('investigation-dag-edges');
+          if (_n) _n.innerHTML = '';
+          if (_e) _e.innerHTML = '';
+        } catch (_) { /* best-effort */ }
+        var leadEl = document.getElementById('investigation-detail-description');
+        if (leadEl) {
+          leadEl.innerHTML = '';
+          var p = document.createElement('p');
+          p.style.color = '#c00';
+          p.textContent = 'Failed to load this investigation: ' + err + '. ';
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.style.cssText = 'font:inherit;font-size:12px;padding:3px 10px;border-radius:6px;border:1px solid #ccd;background:#fff;color:inherit;cursor:pointer';
+          btn.textContent = 'Retry';
+          btn.addEventListener('click', function () { _openInvestigationDetail(name); });
+          p.appendChild(btn);
+          leadEl.appendChild(p);
+        }
       });
   }
   window._openInvestigationDetail = _openInvestigationDetail;
@@ -12161,10 +12460,25 @@
   // "All clear" explainer popover: says what the deterministic needs-attention
   // scan means and lists the checks behind it (all passing when all-clear), so
   // the user can see there's nothing to act on — or what would be flagged.
+  // The honest headline for an investigation the scan flagged NOTHING in. "All
+  // clear" (green) is reserved for an investigation that has member studies AND
+  // at least one has run — otherwise there is simply nothing evaluated yet, which
+  // is a neutral state, not a validated one (issue #1618, bug 3: "✓ All clear" on
+  // an empty / never-run investigation read as if the work had passed).
+  function _naQuietState(summary) {
+    summary = summary || {};
+    var members = (summary.member_count != null) ? summary.member_count : null;
+    var evaluated = (summary.evaluated_count != null) ? summary.evaluated_count : null;
+    if (members === 0) return { label: 'No studies yet', cls: 'aig-na-quiet', color: '#475569' };
+    if (evaluated === 0) return { label: 'No runs yet', cls: 'aig-na-quiet', color: '#475569' };
+    return { label: '✓ All clear', cls: 'aig-na-clear', color: '#166534' };
+  }
+
   function _aigCloseAllClearInfo() { var p = document.getElementById('aig-allclear-pop'); if (p) p.remove(); }
-  function _aigShowAllClearInfo(anchor) {
-    if (document.getElementById('aig-allclear-pop')) { _aigCloseAllClearInfo(); return; }   // toggle
-    var d = window._lastNeedsAttention || {};
+  // Shared body of the needs-attention scan (honest headline + per-check rows with
+  // drill-in). Rendered both into the Needs-attention tab and the legacy popover.
+  function _aigScanBodyHtml(d) {
+    d = d || {};
     var summary = d.summary || {};
     var checks = d.checks || [];
     var memberCount = (summary.member_count != null) ? summary.member_count : null;
@@ -12234,6 +12548,30 @@
         + '</li>';
     }).join('');
     var clear = total === 0;
+    // Honest headline: "✓ All clear" only when something was actually evaluated;
+    // otherwise "No studies yet" / "No runs yet" (neutral), never a green pass.
+    var _quiet = _naQuietState(summary);
+    var _headColor = clear ? _quiet.color : '#b45309';
+    var _headline = clear
+      ? _quiet.label
+      : '⚠ ' + total + ' need' + (total === 1 ? 's' : '') + ' attention';
+    return (
+      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px">'
+        + '<span style="font-weight:700;color:' + _headColor + '">'
+          + _headline + '</span>'
+        + (memberCount != null ? '<span class="muted" style="font-size:0.9em;white-space:nowrap">' + memberCount + ' member stud' + (memberCount === 1 ? 'y' : 'ies') + ' scanned</span>' : '')
+      + '</div>'
+      + '<ul style="margin:4px 0 0;padding:0;list-style:none">' + rows + '</ul>'
+      + '<div style="margin-top:9px;padding-top:7px;border-top:1px solid #f1f5f9">'
+        + '<a href="#" onclick="window._aigOpenDecisionsTab&&window._aigOpenDecisionsTab();return false;" '
+        + 'style="color:#2563eb;text-decoration:none;font-size:0.92em">What are these checks? Open the Decisions tab →</a>'
+      + '</div>'
+    );
+  }
+
+  // Legacy floating popover around the shared scan body (kept for back-compat).
+  function _aigShowAllClearInfo(anchor) {
+    if (document.getElementById('aig-allclear-pop')) { _aigCloseAllClearInfo(); return; }   // toggle
     var pop = document.createElement('div');
     pop.id = 'aig-allclear-pop';
     pop.setAttribute('role', 'dialog');
@@ -12241,17 +12579,7 @@
     pop.style.cssText = 'position:absolute;z-index:80;background:#fff;border:1px solid #e2e8f0;border-radius:8px;'
       + 'box-shadow:0 8px 28px rgba(0,0,0,0.16);padding:10px 12px;min-width:320px;max-width:440px;text-align:left;'
       + 'max-height:78vh;overflow:auto;font-size:0.85em;color:#334155;line-height:1.32';
-    pop.innerHTML =
-      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px">'
-        + '<span style="font-weight:700;color:' + (clear ? '#166534' : '#b45309') + '">'
-          + (clear ? '✓ All clear' : '⚠ ' + total + ' need' + (total === 1 ? 's' : '') + ' attention') + '</span>'
-        + (memberCount != null ? '<span class="muted" style="font-size:0.9em;white-space:nowrap">' + memberCount + ' member stud' + (memberCount === 1 ? 'y' : 'ies') + ' scanned</span>' : '')
-      + '</div>'
-      + '<ul style="margin:4px 0 0;padding:0;list-style:none">' + rows + '</ul>'
-      + '<div style="margin-top:9px;padding-top:7px;border-top:1px solid #f1f5f9">'
-        + '<a href="#" onclick="window._aigOpenDecisionsTab&&window._aigOpenDecisionsTab();return false;" '
-        + 'style="color:#2563eb;text-decoration:none;font-size:0.92em">What are these checks? Open the Decisions tab →</a>'
-      + '</div>';
+    pop.innerHTML = _aigScanBodyHtml(window._lastNeedsAttention || {});
     document.body.appendChild(pop);
     var r = anchor.getBoundingClientRect();
     var top = Math.round(r.bottom + (window.scrollY || window.pageYOffset || 0) + 6);
@@ -12282,42 +12610,60 @@
     _aigCloseAllClearInfo();
   }, true);
 
+  // Needs-attention is now a TAB in the investigation-detail strip (not a top-bar
+  // chip). This fills the tab's panel (#inv-attention-mount) with the full scan and
+  // reflects the flagged count on the tab button's badge.
   function _renderInvNeedsAttention(name) {
-    var container = document.getElementById('investigation-needs-attention');
-    var chip = document.getElementById('aig-needs-attention-chip');
-    if (!container && !chip) return;
-    if (container) container.innerHTML = '';
-    if (chip) chip.innerHTML = '';
-    var _fetch = fetch('/api/needs-attention?investigation=' + encodeURIComponent(name),
-                       {headers: {Accept: 'application/json'}})
-      .then(function(r) { return r.ok ? r.json() : null; });
-    _fetch.then(function(d) {
-      if (!d || !d.summary) return;
-      window._lastNeedsAttention = d;   // the all-clear popover reads this
-      var lbl = '<span class="muted" style="font-size:0.85em">code-computed by the needs-attention scan (deterministic)</span>';
-      var total = (d.summary.total) || 0;
-      if (!total) {
-        // All-clear: a compact chip — now CLICKABLE to explain what it means and
-        // show the (passing) checks behind it.
-        if (chip) chip.innerHTML =
-          '<button type="button" class="aig-na-chip aig-na-clear" onclick="window._aigShowAllClearInfo(this)" '
-          + 'title="Click to see what the needs-attention scan checked">✓ All clear</button>';
-        return;
-      }
-      var bySev = d.summary.by_severity || {};
-      var high = bySev.high || 0;
-      // Compact clickable chip in the toolbar — the SOLE needs-attention surface.
-      // Clicking it opens the rich scan popover (per-check counts + drill-in per
-      // flagged item); there is no longer a duplicate in-body banner.
-      if (chip) chip.innerHTML =
-        '<button type="button" class="aig-na-chip aig-na-flag' + (high ? ' aig-na-high' : '') + '" '
-        + 'onclick="window._aigShowAllClearInfo(this)" '
-        + 'title="' + high + ' high · ' + total + ' total — click for details">⚠ ' + total
-        + ' need' + (total === 1 ? 's' : '') + ' attention</button>';
-      // The flagged items + per-check breakdown render inside the chip's popover
-      // (window._aigShowAllClearInfo, which reads window._lastNeedsAttention set
-      // above). No in-body banner is drawn — the chip is the single surface.
-    }).catch(function() { /* tolerant — leave the chip empty */ });
+    var mount = document.getElementById('inv-attention-mount');
+    var tab = document.querySelector('.inv-brief-tab[onclick*="attention"]');
+    if (!mount && !tab) return;
+    // Clear the "Scanning…" spinner with a note — so the tab never hangs on a
+    // 404 / failed load (e.g. a snapshot whose needs-attention JSON is missing,
+    // or a transient error). Only touch the mount when it's still OUR scan.
+    var _clear = function (msg) {
+      if (window._currentIset && window._currentIset !== name) return;
+      var m = document.getElementById('inv-attention-mount');
+      if (m) m.innerHTML = '<div class="muted" style="padding:6px 2px">' + msg + '</div>';
+    };
+    // Snapshot-aware: DataSource maps this to the baked
+    // /api/needs-attention/<slug>.json offline; live hits the query endpoint.
+    // Raw fetch (the .json-less live path) 404s in a bundle and hangs the tab.
+    var _load = (window.DataSource && window.DataSource.loadNeedsAttention)
+      ? window.DataSource.loadNeedsAttention(name)
+      : fetch('/api/needs-attention?investigation=' + encodeURIComponent(name),
+              {headers: {Accept: 'application/json'}})
+          .then(function (r) { return r.ok ? r.json() : null; });
+    _load
+      .then(function (d) {
+        if (!d || !d.summary) { _clear('Needs-attention scan unavailable.'); return; }
+        if (window._currentIset && window._currentIset !== name) return;  // stale
+        window._lastNeedsAttention = d;   // the popover/tab read this
+        var total = (d.summary.total) || 0;
+        // Honest quiet/clear state (issue #1618, bug 3): "✓ All clear" only when
+        // something was actually evaluated — otherwise "No studies yet" / "No runs
+        // yet", a neutral state, not a validated pass. Drives the tab's tooltip.
+        var _q = _naQuietState(d.summary);
+        var m = document.getElementById('inv-attention-mount');
+        if (m) m.innerHTML = _aigScanBodyHtml(d);
+        // Reflect the flagged count on the tab button (amber badge when > 0),
+        // and never let a quiet/never-run investigation read as a validated pass.
+        var tb = document.querySelector('.inv-brief-tab[onclick*="attention"]');
+        if (tb) {
+          var old = tb.querySelector('.inv-brief-tab-badge');
+          if (old) old.remove();
+          if (total > 0) {
+            tb.classList.add('inv-brief-tab-attn');
+            tb.title = total + ' item' + (total === 1 ? '' : 's') + ' need attention';
+            var b = document.createElement('span');
+            b.className = 'inv-brief-tab-badge attn';
+            b.textContent = total;
+            tb.appendChild(b);
+          } else {
+            tb.classList.remove('inv-brief-tab-attn');
+            tb.title = _q.label;   // "No studies yet" / "No runs yet" / "✓ All clear"
+          }
+        }
+      }).catch(function () { _clear('Needs-attention scan unavailable.'); });
   }
   window._renderInvNeedsAttention = _renderInvNeedsAttention;
 
@@ -12801,11 +13147,13 @@
     view.classList.toggle('inv-overview-collapsed', collapsed);
     var btn = document.getElementById('inv-overview-toggle');
     if (btn) {
-      // Keep the "Investigation" text label beside the caret (iTerm-style labeled
-      // control); only the caret direction reflects collapsed/expanded.
-      btn.innerHTML = '<span class="inv-ov-caret" aria-hidden="true">' + (collapsed ? '▸' : '▾') + '</span> Investigation';
-      btn.setAttribute('title', collapsed ? 'Show investigation' : 'Hide investigation');
+      // "Details" toggle: the caret shows collapsed/expanded; when expanded the
+      // button takes a pressed/active look so it clearly reads as "showing the
+      // investigation details" rather than a dropdown menu.
+      btn.innerHTML = '<span class="inv-ov-caret" aria-hidden="true">' + (collapsed ? '▸' : '▾') + '</span> Details';
+      btn.setAttribute('title', collapsed ? 'Show the investigation details' : 'Hide the investigation details');
       btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      btn.classList.toggle('inv-toggle-on', !collapsed);
     }
   }
   function _toggleInvOverview() {
@@ -13233,7 +13581,19 @@
     edgesSvg.innerHTML  = '';
 
     if (!studies.length) {
-      nodesHost.innerHTML = '<p class="empty-state" style="padding:24px">No studies in this investigation.</p>';
+      // Offer the next step from the empty state instead of making the user
+      // hunt for "+ Study" (issue #1618, §1 — "Offer the next step in every
+      // empty state"). Pre-select THIS investigation in the dialog.
+      var _emptyInv = window._currentInvestigation || '';
+      nodesHost.innerHTML =
+        '<div class="empty-state" style="padding:24px;text-align:center">' +
+          '<p style="margin:0 0 10px">No studies in this investigation yet.</p>' +
+          '<button type="button" class="action-btn" id="iset-empty-add-study">+ Add a study</button>' +
+        '</div>';
+      var _emptyAddBtn = document.getElementById('iset-empty-add-study');
+      if (_emptyAddBtn) _emptyAddBtn.addEventListener('click', function () {
+        _openBrowseCreate('study', _emptyInv);
+      });
       return;
     }
 
@@ -13479,6 +13839,7 @@
                        : (isParked ? 'Parked — a deliberately-deferred future direction, not pending work'
                                    : 'Verdict: pending — not yet concluded'),
                      'aig-verdict-pill', _pillCompact, 'verdict') +
+            (isCompleted ? _aigUpstreamIncompleteChip(s.upstream_incomplete, _pillCompact) : '') +
           '</span>' +
           '<span style="display:flex;align-items:center;gap:6px;flex:none">' +
             _tierPipsHtml(s) +
@@ -14115,7 +14476,8 @@
     var shown = _aigGraphShown();
     btn.innerHTML = '<span class="inv-graph-caret" aria-hidden="true">' + (shown ? '▾' : '▸') + '</span> Graph';
     btn.setAttribute('aria-expanded', shown ? 'true' : 'false');
-    btn.setAttribute('title', shown ? 'Hide investigation graph' : 'Show investigation graph');
+    btn.setAttribute('title', shown ? 'Hide the investigation graph' : 'Show the investigation graph');
+    btn.classList.toggle('inv-toggle-on', shown);
   }
   window._aigCollapseInline = _aigCollapseInline;
   window._aigExpandInline = _aigExpandInline;
@@ -15028,6 +15390,140 @@
     a.href = url; a.download = name + '-figures.zip';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
+
+  // ── "Open in the browser" link variants (vs. the ↓ download handlers above) ──
+  // Report: open the self-contained HTML report inline in a new tab. Live route
+  // serves it inline by default (no ?download); snapshot is a plain .html file.
+  window._vivReportOpen = function (ev, name) {
+    if (ev) ev.stopPropagation();
+    name = name || window._wsInvestigation || window._currentIset;
+    if (!name) return;
+    window.open(_investigationReportUrl(name), '_blank', 'noopener');
+  };
+  // Report download, HTML or PDF (wraps the existing exporter).
+  window._vivReportDownload = function (ev, name, fmt) {
+    if (ev) ev.stopPropagation();
+    _downloadInvestigationReport(name, fmt);
+  };
+  // Notebook: open inline so the browser shows it (live serves ?download=0 inline;
+  // snapshot opens the static .ipynb).
+  window._vivNotebookOpen = function (ev, name) {
+    if (ev) ev.stopPropagation();
+    name = name || window._wsInvestigation || window._currentIset;
+    if (!name) return;
+    var c = window.__DASH_CONFIG__ || {};
+    var base = c.basePath || '';
+    var url = (c.mode === 'snapshot')
+      ? base + '/investigation-notebooks/' + encodeURIComponent(name) + '.ipynb'
+      : '/api/investigation-notebook/' + encodeURIComponent(name) + '?download=0';
+    window.open(url, '_blank', 'noopener');
+  };
+  // Figures: open a standalone figure gallery in a new tab.
+  // Live: the server renders /figures.html (figures inlined). Snapshot: the
+  // publish extracts the gallery (index.html + figure files) to figures/<name>/,
+  // so open that — NOT the report (the old fallback, which showed the report).
+  window._vivFiguresOpen = function (ev, name) {
+    if (ev) ev.stopPropagation();
+    name = name || window._wsInvestigation || window._currentIset;
+    if (!name) return;
+    var c = window.__DASH_CONFIG__ || {};
+    var base = c.basePath || '';
+    var url = (c.mode === 'snapshot')
+      ? base + '/figures/' + encodeURIComponent(name) + '/index.html'
+      : '/api/investigation/' + encodeURIComponent(name) + '/figures.html';
+    window.open(url, '_blank', 'noopener');
+  };
+
+  // Shared LINKS cell for an investigation (used by both the List table and the
+  // Cards view) — each artifact offers open-in-browser AND download, so nothing
+  // is forced to auto-download. report: open HTML | download HTML | download PDF;
+  // notebook: open | download .ipynb; figures (when present): open gallery | zip.
+  // Close every open row-level Shortcuts menu (list table + card view).
+  window._closeRowShortcuts = function () {
+    var ms = document.querySelectorAll('.inv-row-shortcuts-menu');
+    for (var i = 0; i < ms.length; i++) {
+      ms[i].style.display = 'none';
+      // Restore the markup defaults so a reopened menu starts from a clean
+      // absolute/right-aligned anchor (the open path lifts it to fixed).
+      ms[i].style.position = 'absolute';
+      ms[i].style.left = 'auto';
+      ms[i].style.right = '0';
+      ms[i].style.top = '100%';
+      ms[i].style.marginTop = '4px';
+      var b = ms[i].previousElementSibling;
+      if (b && b.setAttribute) b.setAttribute('aria-expanded', 'false');
+    }
+  };
+  // Toggle a single row's Shortcuts dropdown (btn's next sibling is its menu).
+  // Mirrors the investigation-detail _toggleInvReportMenu: stopPropagation keeps
+  // the row/card's own onclick from firing, and the outside-click closer is
+  // registered on a 0ms timeout so THIS click doesn't immediately close it.
+  window._toggleRowShortcuts = function (ev, btn) {
+    if (ev) ev.stopPropagation();
+    var menu = btn.nextElementSibling;
+    if (!menu) return;
+    var isOpen = menu.style.display !== 'none' && menu.style.display !== '';
+    window._closeRowShortcuts();          // close any other open menu first
+    btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    if (!isOpen) {
+      // Lift the menu to position:fixed so it escapes the list table's
+      // overflow-x:auto / overflow:hidden clipping (last-row menus were cut
+      // off at the panel bottom). Anchor it to the button's viewport rect,
+      // right-aligned, and flip it above the button when it would spill past
+      // the bottom edge.
+      menu.style.display = 'block';
+      menu.style.position = 'fixed';
+      menu.style.right = 'auto';
+      menu.style.marginTop = '0';
+      var r = btn.getBoundingClientRect();
+      var left = r.right - menu.offsetWidth;
+      if (left < 8) left = 8;
+      var top = r.bottom + 4;
+      if (top + menu.offsetHeight > window.innerHeight - 8) {
+        top = r.top - menu.offsetHeight - 4;   // open upward
+      }
+      if (top < 8) top = 8;
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+      setTimeout(function () {
+        document.addEventListener('click', window._closeRowShortcuts, { once: true, capture: true });
+      }, 0);
+    }
+  };
+  // LINKS cell for an investigation (used by both the List table and the cards):
+  // a single "Shortcuts ▾" button that opens the SAME grouped menu as the
+  // investigation-detail ↓ Shortcuts (Report / Notebook / Figures, each with
+  // open-in-browser + download), instead of a row of inline text links.
+  window._vivInvLinksHtml = function (iset) {
+    var nm = _esc(iset.name);
+    var _mi = 'class="btn-mini" role="menuitem" style="display:block;width:100%;text-align:left;border:none;background:transparent"';
+    var _sec = function (t) {
+      return '<div style="padding:6px 8px 2px;font-size:0.72em;font-weight:700;text-transform:uppercase;' +
+        'letter-spacing:0.04em;color:#94a3b8">' + t + '</div>';
+    };
+    var items =
+      _sec('Report') +
+        '<button ' + _mi + ' onclick="window._closeRowShortcuts();window._vivReportOpen(event,\'' + nm + '\')">Open in browser</button>' +
+        '<button ' + _mi + ' onclick="window._closeRowShortcuts();window._vivReportDownload(event,\'' + nm + '\',\'html\')">Download HTML</button>' +
+        '<button ' + _mi + ' onclick="window._closeRowShortcuts();window._vivReportDownload(event,\'' + nm + '\',\'pdf\')">Download PDF</button>' +
+      _sec('Notebook') +
+        '<button ' + _mi + ' onclick="window._closeRowShortcuts();window._vivNotebookOpen(event,\'' + nm + '\')">Open in browser</button>' +
+        '<button ' + _mi + ' onclick="window._closeRowShortcuts();window._vivNotebookFromCard(event,\'' + nm + '\')">Download .ipynb</button>';
+    if (iset.n_figures) {
+      items +=
+        _sec('Figures') +
+          '<button ' + _mi + ' onclick="window._closeRowShortcuts();window._vivFiguresOpen(event,\'' + nm + '\')">Open in browser</button>' +
+          '<button ' + _mi + ' onclick="window._closeRowShortcuts();window._vivFiguresFromCard(event,\'' + nm + '\')">Download (zip)</button>';
+    }
+    return '<span class="inv-row-shortcuts" style="position:relative;display:inline-flex">' +
+      '<button type="button" class="btn-mini" aria-haspopup="true" aria-expanded="false" ' +
+        'title="Shortcuts — open in the browser or download (report, notebook, figures)" ' +
+        'onclick="window._toggleRowShortcuts(event, this)">Shortcuts ▾</button>' +
+      '<div class="inv-row-shortcuts-menu" role="menu" style="display:none;position:absolute;right:0;top:100%;' +
+        'margin-top:4px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.14);' +
+        'z-index:70;min-width:190px;padding:4px">' + items + '</div>' +
+    '</span>';
+  };
   // A single study's OUTPUTS (its image figures + any embedded HTML report /
   // dashboard and its viz assets) as a zip.
   window._vivStudyFiguresFromCard = function (ev, slug) {
@@ -15069,12 +15565,14 @@
   window._vivRunStudyFromRow = function (ev, slug) {
     if (ev) ev.stopPropagation();
     if ((window.__DASH_CONFIG__ || {}).mode === 'snapshot') return;
-    if (!confirm("Run this study's current baseline spec as a new run?")) return;
-    apiFetch('POST', '/api/study-run-baseline', {study: slug}).then(function (r) { return r.json(); }).then(function (j) {
-      var id = j && (j.run_id || j.simulation_id);
-      var msg = id ? ('Run launched — ' + id) : ('Run: ' + ((j && j.error) || 'done'));
-      if (typeof _showToast === 'function') _showToast(msg); else alert(msg);
-    }).catch(function (e) { alert('Run failed: ' + e); });
+    _confirmGate("Run this study's current baseline spec as a new run?").then(function (_ok) {
+      if (!_ok) return;
+      apiFetch('POST', '/api/study-run-baseline', {study: slug}).then(function (r) { return r.json(); }).then(function (j) {
+        var id = j && (j.run_id || j.simulation_id);
+        var msg = id ? ('Run launched — ' + id) : ('Run: ' + ((j && j.error) || 'done'));
+        if (typeof _showToast === 'function') _showToast(msg); else alert(msg);
+      }).catch(function (e) { alert('Run failed: ' + e); });
+    });
   };
   // ↻ reproduce — replay a study's most recent run's recorded manifest (live
   // only). Resolves the latest run id from /api/simulations first.
@@ -17286,7 +17784,7 @@
         '<hr style="margin:20px 0;border:none;border-top:1px solid #eee">' +
         '<p class="panel-lead">Analyses to run at dispatch time — which of the workspace\'s <code>v2ecoli.' +
           'workflow.analysis.ANALYSIS_REGISTRY</code> entries to compute. Translated ' +
-          'into <code>analysis_options</code> for remote (sms-api) dispatch and the local post-run pipeline ' +
+          'into <code>analysis_options</code> for remote dispatch and the local post-run pipeline ' +
           'alike.</p>' +
         '<div id="inv-analyses-list">' +
           (window.ProgressTrack ? window.ProgressTrack.loadingHtml('Loading analyses…') : '<p class="empty-state">Loading analyses…</p>') +
@@ -18803,7 +19301,7 @@
   window._runInvestigation = _runInvestigation;
 
   function _deleteInvestigation(name) {
-    if (!confirm('Delete investigation "' + name + '"? This removes its runs.db, visualizations, and spec.yaml.')) return;
+    if (!confirm('Delete investigation "' + name + '"? This removes the investigations/' + name + '/ folder (its investigation.yaml and any member studies stored under it). A same-named top-level study is not affected.')) return;
     apiFetch('POST', '/api/investigation-delete', {name: name}).then(function(r) { return r.json(); }).then(function(j) {
       if (!j.ok) { alert('Delete failed: ' + (j.error || 'unknown')); return; }
       var detail = document.getElementById('investigation-detail');
@@ -19448,7 +19946,7 @@
   // Statuses that mean "not finished" — a run the user just launched and is
   // actively watching. These ALWAYS pin to the top of the Runs list, regardless
   // of the column sort: remote list timestamps come from an unreliable bulk
-  // `last_updated` (every GovCloud run shows the same frozen time), so a live
+  // `last_updated` (every remote run shows the same frozen time), so a live
   // cloud run can't otherwise rise above the wall of old completed runs.
   var _ACTIVE_RUN_STATUSES = { queued: 1, running: 1, pending: 1, submitted: 1,
                                in_progress: 1, started: 1, dispatching: 1 };
@@ -19458,9 +19956,15 @@
   function _sortActiveRuns(list) {
     // Newest dispatch first among the active runs — the remote simulation_id is
     // monotonic and trustworthy (unlike the frozen timestamp), else fall to time.
+    // Opaque run ids: only an integer id is ordered by value; any other id (a /viva/v1 or
+    // compose-api string) counts as 0 here and falls through to the time order.
+    function _simIdNum(r) {
+      var v = (r.remote_origin || {}).simulation_id;
+      return /^\d+$/.test(String(v == null ? '' : v).trim()) ? Number(v) : 0;
+    }
     return list.slice().sort(function (a, b) {
-      var ai = ((a.remote_origin || {}).simulation_id) || 0;
-      var bi = ((b.remote_origin || {}).simulation_id) || 0;
+      var ai = _simIdNum(a);
+      var bi = _simIdNum(b);
       if (ai !== bi) return bi - ai;
       return (b.completed_at || b.started_at || 0) - (a.completed_at || a.started_at || 0);
     });
@@ -19670,7 +20174,7 @@
 
     // Phase 1 — local-first: fetch the fast local index (include_remote=false)
     // so the table + count paint in ~seconds instead of blocking on the slow
-    // (~tens-of-seconds) remote (GovCloud) fetch. Snapshot mode has no live
+    // (~tens-of-seconds) remote-backend fetch. Snapshot mode has no live
     // backend, so its baked list is already complete — load it in one call.
     var snapshot = (window.__DASH_CONFIG__ || {}).mode === 'snapshot';
     window.DataSource.loadSimulations(snapshot ? undefined : { includeRemote: false })
@@ -19685,7 +20189,7 @@
         }
         // Never shrink back to the local-only set once the remote-enriched rows
         // have loaded: a quiet auto-refresh's fast local-only fetch must not clobber
-        // the (slow) GovCloud rows while they're still valid — that collapse-to-local
+        // the (slow) remote rows while they're still valid — that collapse-to-local
         // then re-fetch was the visible flap.
         var _incoming = data.simulations || [];
         if (!window._simRemoteLoaded || _incoming.length >= (window._simRows || []).length) {
@@ -19704,7 +20208,8 @@
         // Phase 2 — merge in the remote runs (slow ~100s) in the background.
         // On a quiet auto-refresh this only re-fires after a backoff and never
         // while one is in flight, so the 15s poll can't restart the slow fetch.
-        if (!snapshot) _maybeLoadRemoteSims(quiet);
+        // Only when a backend lists its runs (the `listing` feature).
+        if (!snapshot) _whenListingOffered(function () { _maybeLoadRemoteSims(quiet); });
       })
       .catch(function (err) {
         if (quiet) return;
@@ -19716,12 +20221,25 @@
   window._initSimulations = _initSimulations;
 
   // Phase 2 of the Runs load: fetch local+remote (the second call includes the
-  // GovCloud runs, deduped server-side) and merge into the table. Best-effort:
-  // a down tunnel leaves the local-only view in place.
-  // Don't re-pull the slow GovCloud list more than ~every 3 min on the quiet
+  // remote backend's runs, deduped server-side) and merge into the table.
+  // Best-effort: an unreachable backend leaves the local-only view in place.
+  // Don't re-pull the slow remote list more than ~every 3 min on the quiet
   // auto-refresh; the deployed /simulations endpoint can take ~100s, so a 15s
   // poll firing it repeatedly never settles.
   var REMOTE_REFRESH_MS = 180000;
+
+  // Phase 2 is an optional request: run `fn` only when the declared features
+  // include `listing` (static/backend-features.js, docs/backend-adapters.md
+  // §2.2). Known features without it skip phase 2 — the server would list no
+  // remote runs. UNKNOWN features (no BackendFeatures, or its request failed)
+  // behave as before: phase 2 runs.
+  function _whenListingOffered(fn) {
+    var bf = window.BackendFeatures;
+    if (!bf || typeof bf.ready !== 'function') { fn(); return; }
+    bf.ready().then(function (r) {
+      if (!r || !r.known || (r.features || []).indexOf('listing') !== -1) fn();
+    }, function () { fn(); });
+  }
 
   function _maybeLoadRemoteSims(quiet) {
     // First load / explicit refresh: always. Quiet auto-refresh: only after the
@@ -19757,8 +20275,8 @@
   function _setSimRemoteStatus(state) {
     var el = document.getElementById('sim-remote-status');
     if (!el) return;
-    el.textContent = state === 'loading' ? '· loading GovCloud runs…'
-      : state === 'error' ? '· GovCloud runs unavailable'
+    el.textContent = state === 'loading' ? '· loading remote runs…'
+      : state === 'error' ? '· remote runs unavailable'
       : '';
   }
 
@@ -19832,37 +20350,54 @@
       if (!chipHost) continue;
       var simId = tr.getAttribute('data-remote-sim-id');
       if (!simId) continue;
+      // The run's deployment and study, so the server finds its record (docs/backend-adapters.md step 1c); the
+      // cache is keyed by both, since two deployments can each have a run with the same integer id.
+      var where = {deployment: tr.getAttribute('data-remote-deployment') || '',
+                   study: tr.getAttribute('data-study') || ''};
+      var cacheKey = where.deployment + '|' + simId;
 
       // Already known terminal from an earlier poll this page session --
       // reapply immediately (no request, no visible flicker) instead of
       // leaving this tick's fresh-from-DB "running" render stand until the
       // next poll gets around to it.
-      var cachedPhase = window._remoteTerminalCache[simId];
+      var cachedPhase = window._remoteTerminalCache[cacheKey];
       if (cachedPhase) {
         chipHost.innerHTML = window.SimTable.statusChip(cachedPhase);
+        if (window._remoteRefusalReason && window._remoteRefusalReason[cacheKey]) {
+          chipHost.title = window._remoteRefusalReason[cacheKey];  // the refusal's reason survives a re-render
+        }
         continue;
       }
 
       if (!/running/i.test(chipHost.textContent)) continue;
       if (checked >= 20) continue;  // defensive cap, not expected to bind in practice
       checked++;
-      (function (host, id) {
-        apiFetch('GET', '/api/remote-run-poll?simulation_id=' + encodeURIComponent(id))
+      (function (host, id, key, where) {
+        apiFetch('GET', '/api/remote-run-poll?simulation_id=' + encodeURIComponent(id) +
+                 (where.deployment ? '&deployment=' + encodeURIComponent(where.deployment) : '') +
+                 (where.study ? '&study=' + encodeURIComponent(where.study) : ''))
           .then(function (r) { return r.json(); })
           .then(function (body) {
             var phase = body && body.phase;
             if (phase === 'done') {
-              window._remoteTerminalCache[id] = 'completed';
+              window._remoteTerminalCache[key] = 'completed';
               host.innerHTML = window.SimTable.statusChip('completed');
             } else if (phase === 'failed') {
-              window._remoteTerminalCache[id] = 'failed';
+              window._remoteTerminalCache[key] = 'failed';
               host.innerHTML = window.SimTable.statusChip('failed');
+            } else if (body && body.terminal) {
+              // Refused: the run belongs to another backend. Never re-polled; the reason is the chip's tooltip.
+              window._remoteTerminalCache[key] = 'other backend';
+              window._remoteRefusalReason = window._remoteRefusalReason || {};
+              window._remoteRefusalReason[key] = body.error || '';
+              host.innerHTML = window.SimTable.statusChip('other backend');
+              host.title = body.error || '';
             }
             // running / queued / unreachable: leave the chip as-is, the next
             // 15s auto-refresh tick will check again.
           })
           .catch(function () { /* transient -- next tick retries */ });
-      })(chipHost, simId);
+      })(chipHost, simId, cacheKey, where);
     }
   }
 
@@ -20656,6 +21191,12 @@
       // the existing Open-PR button. Otherwise fall back to inline append
       // for layouts that still embed everything inside #viv-git-status.
       var actions = [];
+      // Start workstream — the primary CTA when no investigation branch is
+      // active yet (blocker C / #1618: _startWork existed but nothing called it,
+      // so a new user could not begin an investigation branch from the GUI).
+      if (!s.has_active_workstream) {
+        actions.push('<button class="ws-btn ws-primary" onclick="_startWork()" title="Create an investigation branch off ' + _esc(s.base) + ' to group your authoring work">Start workstream</button>');
+      }
       if (!s.upstream_repo) {
         actions.push(s.gh_available
           ? '<button class="ws-btn ws-primary" onclick="_linkBranch()">Link branch to upstream</button>'
