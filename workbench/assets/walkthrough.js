@@ -409,10 +409,21 @@
   // persisted — a reload re-autos too.
   var _aigManualOrient = null;   // 'LR' | 'TB' manual override for the current dock, else null
   var _aigUserLayout = false;    // true while a manual override is in effect (drives the toggle UI)
+  // Snap moved studies back into place: drop the saved manual drag POSITIONS so the next re-render
+  // re-aligns every card by the clean auto-layout. Card size (aigWidthScale) and zoom (aigZoom) are
+  // left untouched — only positions reset. This clears a POSITION override, NOT orientation (which
+  // stays in-memory in _aigManualOrient and is never persisted) — kept out of the orientation setters
+  // so they remain storage-free.
+  function _aigSnapPositionsToLayout() {
+    try { if (_aigPosKey) localStorage.removeItem(_aigPosKey); } catch (e) { /* ignore */ }
+  }
   function _setGraphOrientation(o) {
     if (o !== 'LR' && o !== 'TB') return;
     _aigManualOrient = o;        // transient manual override — holds until the next dock switch
     _aigUserLayout = true;
+    // The alignment buttons also snap moved studies back into the clean auto-layout for the chosen
+    // orientation (position reset only — see _aigSnapPositionsToLayout).
+    _aigSnapPositionsToLayout();
     if (_lastDagArgs) _renderInvestigationDag(_lastDagArgs[0], _lastDagArgs[1], _lastDagArgs[2]);
   }
   window._setGraphOrientation = _setGraphOrientation;
@@ -421,6 +432,7 @@
   function _resetGraphOrientation() {
     _aigManualOrient = null;
     _aigUserLayout = false;
+    _aigSnapPositionsToLayout();  // snap moved studies back to auto-layout (position reset only)
     if (_lastDagArgs) _renderInvestigationDag(_lastDagArgs[0], _lastDagArgs[1], _lastDagArgs[2]);
   }
   window._resetGraphOrientation = _resetGraphOrientation;
@@ -11922,7 +11934,7 @@
     // not an ad-hoc union of whatever fields happen to be present. Each section
     // maps to one canonical investigation.yaml field; a tab appears when its
     // field is authored, always in this order. Add/remove a section in ONE place
-    // (here). Reader flow: the answer (Verdict) → context (Background, Biology) →
+    // (here). Reader flow: context (Background, incl. Biology) → the answer (Findings) →
     // argument (Hypothesis & evidence) → aids (How to read, Glossary) → the plan
     // (Plan progress) → the open calls (Decisions).
     var _refsMap = d.references_resolved || {};
@@ -11990,19 +12002,10 @@
     if (ovParts.length)
       tabs.push({ id:'overview', label:'Overview', html: ovParts.join('') });
 
-    // 2. Verdict — the full campaign answer (executive.verdict); behind a click.
-    if (verdict)
-      tabs.push({ id:'verdict', label:'Verdict', badge: vs ? vsLabel : '',
-        html: '<div class="inv-fresh-mount" data-fresh-tab="verdict" data-slug="' + _esc(d.name || window._currentIset || '') + '"></div>' +
-          '<div class="inv-brief-verdict-tab inv-vs-' + vsClass + '">' +
-          '<span class="inv-vs-pill">' + _esc(vsLabel) + '</span>' +
-          '<div class="inv-brief-verdict-text">' + _invInline(verdict) + '</div></div>' +
-          // Claims (RFC-0005 synthesis layer): each claim, its verdict, and what
-          // supports/challenges it — filled async by argument-graph.js.
-          '<div id="inv-verdict-claims-mount" class="inv-claims-mount"></div>' });
-
-    // 3. Background — the lead intro, the driving Question + Hypothesis, and the
-    // structured argument (Hypothesis & evidence folded in here per the owner).
+    // 2. Background — the lead intro, the driving Question + Hypothesis, the
+    // structured argument (Hypothesis & evidence), and Biology (biological_story,
+    // folded in here as a section per the owner). Sits before Findings (owner's
+    // order: context first, then the answer).
     var bgParts = [];
     if (leadProse)
       bgParts.push('<div class="inv-brief-prose"' +
@@ -12019,22 +12022,35 @@
     if (_evBody)
       bgParts.push('<div class="inv-brief-evidence">' +
         '<div class="inv-brief-frameworks-label">Hypothesis &amp; evidence</div>' + _evBody + '</div>');
+    // Biology — the plain-English mechanism narrative (biological_story), folded
+    // into Background as a section rather than its own tab (per the owner).
+    if (bio)
+      bgParts.push('<div class="inv-brief-biology">' +
+        '<div class="inv-brief-frameworks-label">Biology</div>' +
+        '<div class="inv-brief-prose">' + _renderInvLeadMarkdown(bio) + '</div></div>');
     if (bgParts.length)
       tabs.push({ id:'background', label:'Background', html: bgParts.join('') });
 
-    // Narrative — the ordered scientific reading (RFC-0005): the investigation's
-    // claims arranged by explanatory dependence, with the audit gaps marked
-    // inline. A derived document, next to Background. Filled async by
-    // argument-graph.js; shows nothing if the derivation layer is unavailable.
-    tabs.push({ id:'narrative', label:'Narrative', html:
-      '<div class="inv-fresh-mount" data-fresh-tab="narrative" data-slug="' + _esc(d.name || window._currentIset || '') + '"></div>' +
-      '<div id="inv-narrative-mount" class="inv-narrative-mount">' +
-      '<p class="muted" style="padding:16px">Loading narrative…</p></div>' });
-
-    // 4. Biology — the plain-English mechanism narrative (biological_story).
-    if (bio)
-      tabs.push({ id:'biology', label:'Biology', html:
-        '<div class="inv-brief-prose">' + _renderInvLeadMarkdown(bio) + '</div>' });
+    // 3. Findings — the campaign answer (executive.verdict headline) + the ordered
+    // scientific reading (narrative, RFC-0005): evidence refs, scope, and per-study
+    // figures/open-study links (#inv-narrative-mount, filled async by argument-graph.js).
+    // The separate claims list (#inv-verdict-claims-mount) was a SECOND rendering of
+    // the same findings, so it's dropped — the narrative is the single, richer view.
+    // No tab badge (the verdict status shows on the headline pill inside the tab).
+    {
+      var findParts = [];
+      if (verdict)
+        findParts.push(
+          '<div class="inv-fresh-mount" data-fresh-tab="verdict" data-slug="' + _esc(d.name || window._currentIset || '') + '"></div>' +
+          '<div class="inv-brief-verdict-tab inv-vs-' + vsClass + '">' +
+          '<span class="inv-vs-pill">' + _esc(vsLabel) + '</span>' +
+          '<div class="inv-brief-verdict-text">' + _invInline(verdict) + '</div></div>');
+      findParts.push(
+        '<div class="inv-fresh-mount" data-fresh-tab="narrative" data-slug="' + _esc(d.name || window._currentIset || '') + '"></div>' +
+        '<div id="inv-narrative-mount" class="inv-narrative-mount">' +
+        '<p class="muted" style="padding:16px">Loading narrative…</p></div>');
+      tabs.push({ id:'findings', label:'Findings', html: findParts.join('') });
+    }
 
     // 5. How to read — evaluator tips (string prose or a list of tips).
     if (hasHowto)
@@ -12055,17 +12071,12 @@
     // a tab rather than a space-consuming always-open board under the brief.
     var _planHtml = _planBoardHtml(d, { compact: true });
     if (_planHtml) {
-      var _pb = d.plan_board || [];
-      // Count EVALUATED gates (any terminal verdict), not strict "passed" — honest
-      // met/qualified/refuted verdicts are real progress, so "0/N passed" misread an
-      // evaluated board as no progress. The per-outcome breakdown is in the board tally.
-      var _TERMINAL = { passed: 1, met: 1, qualified: 1, refuted: 1 };
-      var _evaluated = _pb.filter(function (g) { return _TERMINAL[g.status]; }).length;
       // The formalized synthesis spine (canonical gate verdicts rolled up from
       // member claims) replaces this content when argument-graph.js loads the
       // overlay; _planHtml is the sync fallback if the derivation layer is absent.
-      tabs.push({ id:'plan', label:'Plan progress', html:'<div id="inv-plan-mount">' + _planHtml + '</div>',
-        badge: _pb.length ? (_evaluated + '/' + _pb.length + ' evaluated') : '' });
+      // No tab badge (per the owner) — "Plan progress" stands on its own; the
+      // evaluated/total tally lives in the board inside the tab.
+      tabs.push({ id:'plan', label:'Plan progress', html:'<div id="inv-plan-mount">' + _planHtml + '</div>' });
     }
 
     // 8. Decisions — the discovery cycle's "what to do next" (value-ranked
@@ -12100,7 +12111,7 @@
       html: '<div id="inv-attention-mount" class="muted" style="padding:8px 2px;font-size:0.92em">Scanning…</div>' });
 
     // Overview is pushed first, so it is the default (active) tab via the i===0
-    // rule below; every other tab (Verdict, Background, …) is reached by a click.
+    // rule below; every other tab (Background, Findings, …) is reached by a click.
     if (tabs.length) {
       H.push('<div class="inv-brief-tabs" role="tablist">' + tabs.map(function(t, i) {
         var _cls = 'inv-brief-tab' + (i === 0 ? ' active' : '') + (t.attention ? ' inv-brief-tab-attn' : '');
@@ -12506,68 +12517,119 @@
       nondeterministic: 'Runs are reproducible (seeded / deterministic where required).',
       phantom_observable: 'Every declared observable actually exists in the built composite’s structure.'
     };
-    // One row per check, driven by the LIVE scan numbers (passing / examined),
-    // not prose. ✓ when nothing is flagged; amber with a drill-in list otherwise.
-    var rows = checks.map(function (c) {
-      var flagged = c.flagged || 0;
-      var examined = c.examined || 0;
-      var help = HELP[c.kind] || '';
-      var metric;
-      if (examined > 0) metric = '<span style="color:#64748b;font-variant-numeric:tabular-nums">' + (c.passing || 0) + ' / ' + examined + '</span>';
-      else metric = '<span class="muted" style="font-size:0.9em">none to check</span>';
-      var sub = '';
-      if (flagged > 0 && byKindItems[c.kind]) {
-        sub = '<ul style="margin:2px 0 0 17px;padding:0;list-style:none">'
-          + byKindItems[c.kind].map(function (it) {
-              var ref = (it.study || it.ref || '').toString();
-              var label = _esc((it.title || it.ref || it.kind || '').toString());
-              // Surface the CONCRETE issue (detail) + what to do (action_hint),
-              // not just a link — e.g. "composite not found in registry: <ref>".
-              var detail = it.detail ? _esc(it.detail.toString()) : '';
-              var hint = it.action_hint ? _esc(it.action_hint.toString()) : '';
-              var studyTag = (it.study && it.title && it.title.indexOf(it.study) < 0)
-                ? ' <span class="muted" style="font-size:0.85em">· ' + _esc(it.study) + '</span>' : '';
-              return '<li style="margin-top:4px;font-size:0.9em;line-height:1.28">'
-                + (ref
-                    ? '<a href="#" onclick="_openStudyInsideInvestigation(\'' + _esc(ref) + '\',\'conclusions\');return false;" style="color:#2563eb;text-decoration:none">' + label + ' →</a>'
-                    : label) + studyTag
-                + (detail ? '<span style="color:#475569;word-break:break-word"> — ' + detail + '</span>' : '')
-                + (hint ? '<span style="color:#aab4c0;font-size:0.92em"> · ' + hint + '</span>' : '')
-                + '</li>';
-            }).join('')
-          + '</ul>';
-      }
-      return '<li style="margin-top:5px"' + (help ? ' title="' + _esc(help) + '"' : '') + '>'
-        + '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between">'
-          + '<span style="display:flex;gap:8px;align-items:flex-start">'
-            + '<span style="color:' + (flagged ? '#b45309' : '#16a34a') + ';font-weight:700;flex:none">' + (flagged ? '•' : '✓') + '</span>'
-            + '<span style="border-bottom:1px dotted #cbd5e1;cursor:help">' + _esc(c.label || c.kind) + '</span>'
-          + '</span>'
-          + metric
-        + '</div>' + sub
-        + '</li>';
-    }).join('');
-    var clear = total === 0;
-    // Honest headline: "✓ All clear" only when something was actually evaluated;
-    // otherwise "No studies yet" / "No runs yet" (neutral), never a green pass.
+    // Only the checks that FLAG something — the passing checks are rolled into one
+    // muted line so this tab is just a list of the things to fix, not a wall of ✓.
+    var flaggedChecks = checks.filter(function (c) { return (c.flagged || 0) > 0; });
+    var passingCount = checks.length - flaggedChecks.length;
     var _quiet = _naQuietState(summary);
-    var _headColor = clear ? _quiet.color : '#b45309';
-    var _headline = clear
-      ? _quiet.label
-      : '⚠ ' + total + ' need' + (total === 1 ? 's' : '') + ' attention';
+
+    if (total === 0 || flaggedChecks.length === 0) {
+      // Nothing to fix — honest quiet / all-clear, no green wall.
+      return '<div style="font-weight:700;color:' + _quiet.color + '">' + _esc(_quiet.label) + '</div>'
+        + (checks.length ? '<div class="muted" style="font-size:0.9em;margin-top:4px">✓ all ' + checks.length + ' checks clear'
+            + (memberCount != null ? ' across ' + memberCount + ' member stud' + (memberCount === 1 ? 'y' : 'ies') : '') + '</div>' : '')
+        + '<div style="margin-top:9px;padding-top:7px;border-top:1px solid #f1f5f9">'
+          + '<a href="#" onclick="window._aigOpenDecisionsTab&&window._aigOpenDecisionsTab();return false;" style="color:#2563eb;text-decoration:none;font-size:0.92em">What are these checks? Open the Decisions tab →</a>'
+        + '</div>';
+    }
+
+    // Build the visible sections AND a plain-text copy payload (one line per item,
+    // ready to paste straight to Claude).
+    var copyLines = [];
+    var sections = flaggedChecks.map(function (c) {
+      var help = HELP[c.kind] || '';
+      var items = byKindItems[c.kind] || [];
+      var flagged = c.flagged || items.length || 0;
+      var lis;
+      if (items.length) {
+        lis = items.map(function (it) {
+          var ref = (it.study || it.ref || '').toString();
+          var label = _esc((it.title || it.ref || it.kind || '').toString());
+          var detail = it.detail ? _esc(it.detail.toString()) : '';
+          var hint = it.action_hint ? _esc(it.action_hint.toString()) : '';
+          var studyTag = (it.study && it.title && it.title.indexOf(it.study) < 0)
+            ? ' <span class="muted" style="font-size:0.85em">· ' + _esc(it.study) + '</span>' : '';
+          // plain-text copy line
+          var ct = '- [' + (c.label || c.kind) + '] ' + (it.title || it.ref || it.kind || '');
+          if (it.study && (!it.title || it.title.indexOf(it.study) < 0)) ct += ' (' + it.study + ')';
+          if (it.detail) ct += ' — ' + it.detail;
+          if (it.action_hint) ct += ' · ' + it.action_hint;
+          copyLines.push(ct);
+          // Link to exactly where it's fixed: the member study (opened to its
+          // conclusions tab); an investigation-level item (no study) → Decisions.
+          var link = ref
+            ? '<a href="#" onclick="_openStudyInsideInvestigation(\'' + _esc(ref) + '\',\'conclusions\');return false;" style="color:#2563eb;text-decoration:none">' + label + ' →</a>'
+            : '<a href="#" onclick="window._aigOpenDecisionsTab&&window._aigOpenDecisionsTab();return false;" style="color:#2563eb;text-decoration:none">' + label + ' →</a>';
+          return '<li style="margin-top:4px;font-size:0.92em;line-height:1.3">'
+            + link + studyTag
+            + (detail ? '<span style="color:#475569;word-break:break-word"> — ' + detail + '</span>' : '')
+            + (hint ? '<span style="color:#aab4c0;font-size:0.92em"> · ' + hint + '</span>' : '')
+            + '</li>';
+        }).join('');
+      } else {
+        // Flagged but the scan gave no per-item detail — surface count + a route.
+        copyLines.push('- [' + (c.label || c.kind) + '] ' + flagged + ' flagged (see Decisions tab for detail)');
+        lis = '<li style="margin-top:4px;font-size:0.9em;color:#64748b">' + flagged + ' flagged — '
+          + '<a href="#" onclick="window._aigOpenDecisionsTab&&window._aigOpenDecisionsTab();return false;" style="color:#2563eb;text-decoration:none">open Decisions →</a></li>';
+      }
+      return '<div style="margin-top:10px">'
+        + '<div style="font-weight:600;color:#b45309;font-size:0.92em"' + (help ? ' title="' + _esc(help) + '"' : '') + '>'
+          + _esc(c.label || c.kind) + ' <span class="muted" style="font-weight:400">· ' + flagged + '</span></div>'
+        + '<ul style="margin:3px 0 0;padding:0;list-style:none">' + lis + '</ul>'
+        + '</div>';
+    }).join('');
+
+    var invName = (d.investigation || window._currentIset || '').toString();
+    var copyText = 'Needs attention — investigation "' + invName + '" (' + total + ' item' + (total === 1 ? '' : 's') + '):\n' + copyLines.join('\n');
+    var copyAttr = encodeURIComponent(copyText);
+
     return (
-      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px">'
-        + '<span style="font-weight:700;color:' + _headColor + '">'
-          + _headline + '</span>'
-        + (memberCount != null ? '<span class="muted" style="font-size:0.9em;white-space:nowrap">' + memberCount + ' member stud' + (memberCount === 1 ? 'y' : 'ies') + ' scanned</span>' : '')
+      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px">'
+        + '<span style="font-weight:700;color:#b45309">⚠ ' + total + ' need' + (total === 1 ? 's' : '') + ' attention</span>'
+        + '<span style="display:flex;align-items:center;gap:10px">'
+          + (memberCount != null ? '<span class="muted" style="font-size:0.9em;white-space:nowrap">' + memberCount + ' member stud' + (memberCount === 1 ? 'y' : 'ies') + ' scanned</span>' : '')
+          + '<button type="button" class="na-copy-btn" data-copy="' + copyAttr + '" onclick="_naCopy(this)" title="Copy the list as plain text — to paste straight to Claude" '
+            + 'style="font-size:0.84em;font-weight:600;color:#2563eb;background:#eff6ff;border:1px solid #dbeafe;border-radius:6px;padding:3px 9px;cursor:pointer;white-space:nowrap">⧉ Copy</button>'
+        + '</span>'
       + '</div>'
-      + '<ul style="margin:4px 0 0;padding:0;list-style:none">' + rows + '</ul>'
+      + sections
+      + (passingCount > 0 ? '<div class="muted" style="font-size:0.86em;margin-top:11px">✓ ' + passingCount + ' other check' + (passingCount === 1 ? '' : 's') + ' clear</div>' : '')
       + '<div style="margin-top:9px;padding-top:7px;border-top:1px solid #f1f5f9">'
         + '<a href="#" onclick="window._aigOpenDecisionsTab&&window._aigOpenDecisionsTab();return false;" '
         + 'style="color:#2563eb;text-decoration:none;font-size:0.92em">What are these checks? Open the Decisions tab →</a>'
       + '</div>'
     );
   }
+
+  // Copy the needs-attention list (plain text, from the button's data-copy) to the
+  // clipboard so the user can paste it straight to Claude. Async clipboard with a
+  // textarea+execCommand fallback (older/insecure contexts); brief "Copied ✓" ack.
+  function _naCopy(btn) {
+    if (!btn) return;
+    var t = btn.getAttribute('data-copy') || '';
+    try { t = decodeURIComponent(t); } catch (e) { /* keep raw */ }
+    var ack = function () {
+      var o = btn.getAttribute('data-label') || btn.textContent;
+      btn.setAttribute('data-label', o);
+      btn.textContent = 'Copied ✓';
+      setTimeout(function () { btn.textContent = btn.getAttribute('data-label') || '⧉ Copy'; }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(ack).catch(function () { _naCopyFallback(t, ack); });
+    } else {
+      _naCopyFallback(t, ack);
+    }
+  }
+  function _naCopyFallback(t, ack) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      if (ack) ack();
+    } catch (e) { /* no-op */ }
+  }
+  window._naCopy = _naCopy;
 
   // Legacy floating popover around the shared scan body (kept for back-compat).
   function _aigShowAllClearInfo(anchor) {
@@ -13540,6 +13602,240 @@
       .catch(function () {});
   }
 
+  // ---- Card-graph direct manipulation (investigation DAG) ----
+  // (A) RESIZE the SELECTED card from its right edge to set the GLOBAL card width for all
+  //     cards (drives aigWidthScale via _setAigWidthScale — the same knob as the width slider).
+  // (B) DRAG any card to reposition, with snap-to-grid, persisted per investigation. Only a
+  //     drag past a small threshold moves a card, so click-to-select / dblclick-to-open still
+  //     fire. _renderInvestigationDag applies the saved position map over the computed layout
+  //     (below) so manual placement survives re-renders, and edges redraw from the moved spots.
+  var _AIG_SNAP = 16;              // snap grid (layout px)
+  var _AIG_RESIZE_EDGE = 12;       // px from the selected card's right edge = resize handle
+  var _aigBandCardW = 150;         // _opts.cardW of the current band (set each render; resize -> scale)
+  var _aigPosKey = 'aig-card-pos:investigation';   // per-investigation localStorage key (set each render)
+  function _aigLoadPos() { try { return JSON.parse(localStorage.getItem(_aigPosKey) || '{}') || {}; } catch (e) { return {}; } }
+  function _aigSavePos(m) { try { localStorage.setItem(_aigPosKey, JSON.stringify(m)); } catch (e) {} }
+  var _aigRenderCtx = null;        // {pos, studies, CARD_W, gap} — for live collision during a drag
+  function _aigResolveOverlaps(pos, studies, CARD_W, gap, fixedSlug) {
+    // Iteratively separate overlapping card rectangles (CARD_W × measured height, + gap margin),
+    // pushing along the axis of LEAST overlap so cards never sit on top of each other. fixedSlug
+    // (optional) stays put and others yield around it (drag: the held card is fixed). Mutates
+    // pos[].x/y only — the caller writes the DOM. Returns true if anything moved.
+    var it, i, j, changed = false;
+    for (it = 0; it < 40; it++) {
+      var any = false;
+      for (i = 0; i < studies.length; i++) {
+        for (j = i + 1; j < studies.length; j++) {
+          var a = pos[studies[i].name], b = pos[studies[j].name];
+          if (!a || !b) continue;
+          var ah = a.h || 120, bh = b.h || 120;
+          var ox = Math.min(a.x + CARD_W, b.x + CARD_W) - Math.max(a.x, b.x) + gap;  // x-overlap (+gap)
+          var oy = Math.min(a.y + ah, b.y + bh) - Math.max(a.y, b.y) + gap;          // y-overlap (+gap)
+          if (ox <= 0 || oy <= 0) continue;        // already separated (with margin)
+          var af = (studies[i].name === fixedSlug), bf = (studies[j].name === fixedSlug);
+          if (af && bf) continue;
+          any = true; changed = true;
+          if (ox < oy) {                            // least overlap on X → push apart horizontally
+            var dx = (a.x <= b.x) ? ox : -ox;
+            if (af) b.x += dx; else if (bf) a.x -= dx; else { a.x -= dx / 2; b.x += dx / 2; }
+          } else {                                  // push apart vertically
+            var dy = (a.y <= b.y) ? oy : -oy;
+            if (af) b.y += dy; else if (bf) a.y -= dy; else { a.y -= dy / 2; b.y += dy / 2; }
+          }
+        }
+      }
+      if (!any) break;
+    }
+    // No clamp to 0 here — a left/top wall would jam cards against the edge instead of letting them
+    // separate. The render pass shifts the whole graph back on-canvas if the min goes past the padding.
+    return changed;
+  }
+  var _aigRevealKey = 'aig-card-reveal:investigation';   // per-investigation reveal (extra clamp lines) store
+  function _aigLoadReveal() { try { return JSON.parse(localStorage.getItem(_aigRevealKey) || '{}') || {}; } catch (e) { return {}; } }
+  function _aigSaveReveal(m) { try { localStorage.setItem(_aigRevealKey, JSON.stringify(m)); } catch (e) {} }
+  function _aigApplyReveal(node, boost) {
+    // Reveal more of the cut-off Asks/Finds text as the card gets BIGGER: relax each clamped section's
+    // line-clamp by (a) a WIDTH bonus that grows with the global card width (aigWidthScale) — so widening
+    // a card shows more text, not just the same lines reflowed wider — plus (b) the per-card bottom-edge
+    // reveal `boost`. A total >= 40 shows the full text. boost 0 + width 1.0 = the band default.
+    if (!node) return;
+    var ws = (typeof aigWidthScale === 'number') ? aigWidthScale : 1;
+    var widthBonus = Math.round(Math.max(0, ws - 1) * 8);   // +8 lines per +1.0 of width scale
+    node.querySelectorAll('.aig-clamp[data-clamp]').forEach(function (el) {
+      var base = parseInt(el.getAttribute('data-clamp'), 10) || 2;
+      var extra = widthBonus + (boost | 0);
+      var n = (extra >= 40) ? 999 : Math.max(base, base + extra);
+      el.style.webkitLineClamp = String(n);
+      el.style.lineClamp = String(n);
+    });
+  }
+  function _aigStartHeightResize(e, node, slug) {
+    e.preventDefault(); e.stopPropagation();
+    var startY = e.clientY, z = _aigNodeZoom(node);
+    var startBoost = (_aigLoadReveal()[slug]) || 0, cur = startBoost, raf = 0;
+    function flush() { raf = 0; _aigApplyReveal(node, cur); }   // reveal grows the card live as the browser reflows
+    function mm(ev) {
+      var dy = (ev.clientY - startY) / (z || 1);
+      cur = Math.max(0, Math.round(startBoost + dy / 18));      // ~18px of drag per extra line revealed
+      if (!raf) raf = requestAnimationFrame(flush);
+    }
+    function mu() {
+      document.removeEventListener('pointermove', mm, true);
+      document.removeEventListener('pointerup', mu, true);
+      if (raf) cancelAnimationFrame(raf);
+      flush();
+      var r = _aigLoadReveal();
+      if (cur > 0) r[slug] = cur; else delete r[slug];
+      _aigSaveReveal(r);
+      var _hA = _aigCaptureAnchor();   // keep the selected (resized) card fixed in place
+      if (_lastDagArgs) _renderInvestigationDag(_lastDagArgs[0], _lastDagArgs[1], _lastDagArgs[2]);  // re-measure heights + re-resolve overlaps around the taller card
+      _aigRestoreAnchor(_hA);
+    }
+    document.addEventListener('pointermove', mm, true);
+    document.addEventListener('pointerup', mu, true);
+  }
+  function _aigNodeZoom(node) {
+    // Effective on-screen scale = rendered width / layout width (the CSS transform:scale zoom),
+    // read from the DOM so this doesn't depend on the zoom var's scope.
+    var lw = parseFloat(node.style.width) || _aigBandCardW || 150;
+    var rw = node.getBoundingClientRect().width;
+    return (lw > 0 && rw > 0) ? (rw / lw) : 1;
+  }
+  function _aigStartResizeSelected(e, node) {
+    e.preventDefault(); e.stopPropagation();
+    var startX = e.clientX, z = _aigNodeZoom(node);
+    var startLayoutW = parseFloat(node.style.width) || _aigBandCardW;
+    var base = _aigBandCardW || 150, pending = null, raf = 0;
+    function flush() { raf = 0; if (pending != null) { try { _setAigWidthScale(pending); } catch (x) {} pending = null; } }
+    function mm(ev) {
+      var newLayoutW = startLayoutW + (ev.clientX - startX) / (z || 1);
+      pending = newLayoutW / base;               // aigWidthScale = layout width / band base width
+      if (!raf) raf = requestAnimationFrame(flush);
+    }
+    function mu() {
+      document.removeEventListener('pointermove', mm, true);
+      document.removeEventListener('pointerup', mu, true);
+      if (raf) cancelAnimationFrame(raf);
+      flush();
+    }
+    document.addEventListener('pointermove', mm, true);
+    document.addEventListener('pointerup', mu, true);
+  }
+  function _aigStartMove(e, node, slug) {
+    var startX = e.clientX, startY = e.clientY, z = _aigNodeZoom(node);
+    var baseLeft = parseFloat(node.style.left) || 0, baseTop = parseFloat(node.style.top) || 0;
+    var moved = false, pending = null, raf = 0;
+    function flush() {
+      raf = 0;
+      if (!pending) return;
+      var ctx = _aigRenderCtx;
+      if (ctx && ctx.pos[slug]) {
+        ctx.pos[slug].x = pending.x; ctx.pos[slug].y = pending.y;
+        _aigResolveOverlaps(ctx.pos, ctx.studies, ctx.CARD_W, ctx.gap, slug);   // held card fixed; others yield
+        // No wall: if dragging left/up pushed any card past the padding, shift the whole graph back
+        // on-canvas (the held card sticks at the edge, the rest flow the other way) — never clips at 0.
+        var mnX = Infinity, mnY = Infinity;
+        ctx.studies.forEach(function (s) { var p = ctx.pos[s.name]; if (p) { if (p.x < mnX) mnX = p.x; if (p.y < mnY) mnY = p.y; } });
+        var sX = (mnX !== Infinity && mnX < ctx.padX) ? (ctx.padX - mnX) : 0;
+        var sY = (mnY !== Infinity && mnY < ctx.padY) ? (ctx.padY - mnY) : 0;
+        if (sX || sY) ctx.studies.forEach(function (s) { var p = ctx.pos[s.name]; if (p) { p.x += sX; p.y += sY; } });
+        ctx.studies.forEach(function (s) { var p = ctx.pos[s.name]; if (p) { p.node.style.left = p.x + 'px'; p.node.style.top = p.y + 'px'; } });
+      } else {
+        node.style.left = pending.x + 'px'; node.style.top = pending.y + 'px';
+      }
+      pending = null;
+    }
+    function mm(ev) {
+      var dx = (ev.clientX - startX) / (z || 1), dy = (ev.clientY - startY) / (z || 1);
+      if (!moved && (Math.abs(dx) + Math.abs(dy)) < 4) return;   // threshold: a real drag, not a click
+      moved = true; ev.preventDefault();
+      pending = { x: baseLeft + dx, y: baseTop + dy };
+      if (!raf) raf = requestAnimationFrame(flush);
+    }
+    function mu(ev) {
+      document.removeEventListener('pointermove', mm, true);
+      document.removeEventListener('pointerup', mu, true);
+      if (!moved) return;                         // a click (no real drag) → let select/open fire
+      ev.preventDefault(); ev.stopPropagation();
+      if (raf) cancelAnimationFrame(raf);
+      flush();
+      var fx = Math.round((parseFloat(node.style.left) || 0) / _AIG_SNAP) * _AIG_SNAP;
+      var fy = Math.round((parseFloat(node.style.top) || 0) / _AIG_SNAP) * _AIG_SNAP;
+      var m = _aigLoadPos(); m[slug] = { x: fx, y: fy }; _aigSavePos(m);
+      var _dA = _aigCaptureAnchor();   // keep the selected card fixed as the re-render settles
+      if (_lastDagArgs) _renderInvestigationDag(_lastDagArgs[0], _lastDagArgs[1], _lastDagArgs[2]);  // settle at snap + redraw edges
+      _aigRestoreAnchor(_dA);
+    }
+    document.addEventListener('pointermove', mm, true);
+    document.addEventListener('pointerup', mu, true);
+  }
+  function _aigStartCornerResize(e, node, slug) {
+    // Bottom-right corner of the SELECTED card → resize BOTH at once: horizontal drag sets the global
+    // width (aigWidthScale), vertical drag reveals more text (per-card boost).
+    e.preventDefault(); e.stopPropagation();
+    var startX = e.clientX, startY = e.clientY, z = _aigNodeZoom(node);
+    var startLayoutW = parseFloat(node.style.width) || _aigBandCardW, base = _aigBandCardW || 150;
+    var startBoost = (_aigLoadReveal()[slug]) || 0, curBoost = startBoost, pendingW = null, raf = 0;
+    function flush() {
+      raf = 0;
+      var r = _aigLoadReveal(); if (curBoost > 0) r[slug] = curBoost; else delete r[slug]; _aigSaveReveal(r);
+      if (pendingW != null) { try { _setAigWidthScale(pendingW); } catch (x) {} }   // global width (re-renders, re-applies reveal)
+      var live = document.querySelector('.iset-dag-node[data-study="' + _aigCssEsc(slug) + '"]');
+      _aigApplyReveal(live || node, curBoost);                                      // live reveal (covers pure-vertical)
+    }
+    function mm(ev) {
+      var dx = (ev.clientX - startX) / (z || 1), dy = (ev.clientY - startY) / (z || 1);
+      pendingW = (startLayoutW + dx) / base;
+      curBoost = Math.max(0, Math.round(startBoost + dy / 18));
+      if (!raf) raf = requestAnimationFrame(flush);
+    }
+    function mu() {
+      document.removeEventListener('pointermove', mm, true);
+      document.removeEventListener('pointerup', mu, true);
+      if (raf) cancelAnimationFrame(raf);
+      flush();
+      var _cA = _aigCaptureAnchor();   // keep the selected (resized) card fixed in place
+      if (_lastDagArgs) _renderInvestigationDag(_lastDagArgs[0], _lastDagArgs[1], _lastDagArgs[2]);
+      _aigRestoreAnchor(_cA);
+    }
+    document.addEventListener('pointermove', mm, true);
+    document.addEventListener('pointerup', mu, true);
+  }
+  function _aigWireCardManipulation(host) {
+    if (!host || host._aigManipWired) return;
+    host._aigManipWired = true;
+    host.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 || !e.target.closest) return;
+      var node = e.target.closest('.iset-dag-node[data-study]');
+      if (!node) return;
+      // Leave clicks on interactive sub-elements (buttons, pills, the expand affordance) alone.
+      if (e.target.closest('button, a, [onclick], .aig-more-wrap, .aig-progress-pill, .aig-verdict-pill, .dag-followups-btn')) return;
+      var rect = node.getBoundingClientRect();
+      var sel = node.classList.contains('aig-node-selected');
+      var nearRight = (rect.right - e.clientX) <= _AIG_RESIZE_EDGE;
+      var nearBottom = (rect.bottom - e.clientY) <= _AIG_RESIZE_EDGE;
+      if (sel && nearRight && nearBottom) {
+        _aigStartCornerResize(e, node, node.dataset.study);    // bottom-right corner → width + reveal (diagonal)
+      } else if (sel && nearRight) {
+        _aigStartResizeSelected(e, node);                      // right edge of SELECTED → resize-to-width
+      } else if (sel && nearBottom) {
+        _aigStartHeightResize(e, node, node.dataset.study);    // bottom edge of SELECTED → reveal more text
+      } else {
+        _aigStartMove(e, node, node.dataset.study);            // anywhere else → drag-to-reposition
+      }
+    });
+    host.addEventListener('pointermove', function (e) {   // cursor hint: resize on the selected card's right edge
+      if (!e.target.closest) return;
+      var node = e.target.closest('.iset-dag-node.aig-node-selected');
+      if (!node) return;
+      var rect = node.getBoundingClientRect();
+      var rr = rect.right - e.clientX, rb = rect.bottom - e.clientY;
+      node.style.cursor = (rr <= _AIG_RESIZE_EDGE && rb <= _AIG_RESIZE_EDGE) ? 'nwse-resize'
+                        : (rr <= _AIG_RESIZE_EDGE) ? 'ew-resize'
+                        : (rb <= _AIG_RESIZE_EDGE) ? 'ns-resize' : 'grab';
+    });
+  }
+
   function _renderInvestigationDag(studies, chainsBySlug, studyEdges) {
     _lastDagArgs = [studies, chainsBySlug, studyEdges];
     // Assigned to _layoutAndDraw below; each card's expand toggle calls it to
@@ -13632,6 +13928,37 @@
     }
     studies.forEach(function(s) { if (depth[s.name] === undefined) depth[s.name] = 0; });
 
+    // Grid-pack the LOOSE (disconnected) studies. A study with no in-investigation
+    // prerequisite AND no in-investigation dependent is an isolated node — it carries
+    // no directional relationship, so forcing every loose study into one long depth-0
+    // breadth row reads as a misleading single line. Instead reassign the loose nodes
+    // to a compact ~square GRID of depth-levels (a block below the connected subgraph in
+    // TB / beside it in LR), so only genuinely CONNECTED studies keep the directional
+    // depth flow and the loose cards pack tightly for viewing. Loose nodes have no edges,
+    // so no lines are drawn to them — only their placement changes.
+    (function _gridPackLooseNodes() {
+      var loose = [];
+      studies.forEach(function(s) {
+        var hasParent = dagEdgesFor(s).some(function(p) { return byName[p.study]; });
+        var hasChild = (children[s.name] || []).length > 0;
+        if (!hasParent && !hasChild) loose.push(s);
+      });
+      if (loose.length < 3) return;   // 0–2 loose nodes already read fine as a short row
+      loose.sort(function(a, b) { return a.name.localeCompare(b.name); });
+      var looseSet = {};
+      loose.forEach(function(s) { looseSet[s.name] = true; });
+      // Deepest level occupied by a CONNECTED study — the loose grid starts just past it
+      // (base 0 when every study is loose, so the grid fills from the top).
+      var connMax = -1;
+      studies.forEach(function(s) {
+        if (!looseSet[s.name] && depth[s.name] > connMax) connMax = depth[s.name];
+      });
+      var base = connMax + 1;
+      // ~Square grid: perLevel cards per depth-level (row in TB / column in LR).
+      var perLevel = Math.max(2, Math.ceil(Math.sqrt(loose.length)));
+      loose.forEach(function(s, i) { depth[s.name] = base + Math.floor(i / perLevel); });
+    })();
+
     // Bin by depth.
     var byDepth = {};
     studies.forEach(function(s) {
@@ -13674,6 +14001,9 @@
     // the zoom band. DEPTH_GAP widens a little with the cards so columns don't
     // crowd; BREADTH_GAP (same-depth stacking) stays fixed.
     var CARD_W = Math.round(_opts.cardW * aigWidthScale);
+    // Current band base width + per-investigation position store (for direct manipulation above).
+    _aigBandCardW = _opts.cardW;
+    _aigPosKey = 'aig-card-pos:' + (_dagInvSlug || 'investigation');
     var DEPTH_GAP = Math.round(_opts.xGap * (1 + (aigWidthScale - 1) * 0.5)), BREADTH_GAP = 22;
     var PAD_X = 24, PAD_Y = 16;
     var svgNS = 'http://www.w3.org/2000/svg';
@@ -13982,7 +14312,7 @@
           });
         })(s, chainsBySlug[s.name]);
       }
-      pos[s.name] = { x: x, node: node, depth: depth[s.name] };
+      pos[s.name] = { x: x, lx: x, node: node, depth: depth[s.name] };
     });
 
     // Measure + position + draw, wrapped in a closure so it can RE-RUN. The
@@ -13994,6 +14324,9 @@
     // only for the first synchronous pass (it alone resets the scroll position).
     function _layoutAndDraw(isInitial) {
     // Measure now that content is in the DOM (container is already visible).
+    // Apply each card's saved reveal (extra clamp lines from a bottom-edge drag) BEFORE measuring, so
+    // the measured height includes the revealed text and overlap-resolution spaces around the taller card.
+    (function () { var rev = _aigLoadReveal(); studies.forEach(function (s) { var p = pos[s.name]; if (p) _aigApplyReveal(p.node, rev[s.name] || 0); }); })();
     studies.forEach(function(s) { pos[s.name].h = pos[s.name].node.offsetHeight || 120; });
 
     // -- Pass 2: position the measured axis, then compute the canvas size --
@@ -14047,6 +14380,40 @@
       });
       canvasW = PAD_X * 2 + (depths.length ? depths[depths.length - 1] : 0) * (CARD_W + DEPTH_GAP) + CARD_W;
     }
+
+    // Apply any user-dragged card positions (persisted per investigation, snap-to-grid) over the
+    // computed layout, grow the canvas to fit them, and wire drag/resize once. Edges below redraw
+    // from these positions. A loose OR connected card can be moved; only a drag past the threshold
+    // repositions, so click-to-select / dblclick-to-open still work.
+    (function _aigPlaceSeparateWire() {
+      var saved = _aigLoadPos(), GAP = Math.max(14, BREADTH_GAP);
+      // Reset to the layout baseline (lx from Pass 1, y from Pass 2) so re-renders don't accumulate,
+      // then apply saved (dragged) positions.
+      studies.forEach(function (s) {
+        var p = pos[s.name], sp = saved[s.name]; if (!p) return;
+        p.x = (sp && typeof sp.x === 'number') ? sp.x : (p.lx != null ? p.lx : p.x);
+        if (sp && typeof sp.y === 'number') p.y = sp.y;   // else keep the fresh Pass-2 layout y
+      });
+      // Separate ANY overlaps so cards never sit on top of each other (large/full-detail cards or
+      // manual placement push each other apart), then write the DOM + grow the canvas to fit.
+      _aigResolveOverlaps(pos, studies, CARD_W, GAP, window._aigSelected || null);  // selected card is the fixed anchor; others move around it
+      // No left/top wall: if separation (or a drag) pushed the leftmost/topmost card past the padding,
+      // shift the WHOLE graph back on-canvas so the leftmost sits at PAD_X and the topmost at PAD_Y,
+      // instead of jamming cards against x=0 / y=0 and overlapping there.
+      var minX = Infinity, minY = Infinity;
+      studies.forEach(function (s) { var p = pos[s.name]; if (p) { if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; } });
+      var shX = (minX !== Infinity && minX < PAD_X) ? (PAD_X - minX) : 0;
+      var shY = (minY !== Infinity && minY < PAD_Y) ? (PAD_Y - minY) : 0;
+      if (shX || shY) studies.forEach(function (s) { var p = pos[s.name]; if (p) { p.x += shX; p.y += shY; } });
+      studies.forEach(function (s) {
+        var p = pos[s.name]; if (!p) return;
+        p.node.style.left = p.x + 'px'; p.node.style.top = p.y + 'px';
+        if (p.x + CARD_W + PAD_X > canvasW) canvasW = p.x + CARD_W + PAD_X;
+        if (p.y + (p.h || 120) + PAD_Y > canvasH) canvasH = p.y + (p.h || 120) + PAD_Y;
+      });
+      _aigRenderCtx = { pos: pos, studies: studies, CARD_W: CARD_W, gap: GAP, padX: PAD_X, padY: PAD_Y };  // live drag
+    })();
+    _aigWireCardManipulation(nodesHost);
 
     nodesHost.style.width = canvasW + 'px';
     nodesHost.style.height = canvasH + 'px';
@@ -14487,8 +14854,10 @@
     var shell = document.getElementById('investigation-dag-shell');
     if (!shell) return;
     var cw = parseFloat(shell.dataset.canvasW) || 1, ch = parseFloat(shell.dataset.canvasH) || 1;
-    var z = Math.min((shell.clientWidth - 10) / cw, (shell.clientHeight - 10) / ch);
-    aigZoom = Math.max(0.3, Math.min(1.5, z || 1));
+    var z = Math.min((shell.clientWidth - 16) / cw, (shell.clientHeight - 16) / ch);
+    // Floor lowered 0.3 -> 0.08 so "fit to screen" can zoom OUT far enough to show ALL cards even for a
+    // large graph with tall full-detail cards (the old 0.3 floor left big graphs clipped).
+    aigZoom = Math.max(0.08, Math.min(1.5, z || 1));
     _applyAigZoom();
     shell.scrollLeft = 0; shell.scrollTop = 0;
   }
@@ -14648,7 +15017,9 @@
     if (!shell) return;
     var cw = parseFloat(shell.dataset.canvasW) || 1, ch = parseFloat(shell.dataset.canvasH) || 1;
     var z = Math.min((shell.clientWidth - 16) / cw, (shell.clientHeight - 16) / ch);
-    aigZoom = Math.max(0.3, Math.min(2, z || 1));
+    // Floor lowered 0.3 -> 0.08 so Fill-to-screen zooms OUT far enough to show ALL cards even for a large
+    // graph with tall full-detail cards (the 0.3 floor left big graphs clipped / not fully visible).
+    aigZoom = Math.max(0.08, Math.min(2, z || 1));
     _applyAigZoom();
     // Centre the now-fully-visible graph in the viewport.
     shell.scrollLeft = Math.max(0, (cw * aigZoom - shell.clientWidth) / 2);
@@ -15383,12 +15754,63 @@
     if (ev) ev.stopPropagation();
     var c = window.__DASH_CONFIG__ || {};
     var base = c.basePath || '';
-    var url = (c.mode === 'snapshot')
-      ? base + '/figures/' + encodeURIComponent(name) + '/figures.zip'
-      : '/api/investigation/' + encodeURIComponent(name) + '/figures.zip';
+    // Snapshot bundles no longer store a duplicate figures.zip (it doubled the
+    // figures footprint on disk + in gh-pages history). The gallery files ARE
+    // published (for "Open in browser"); rebuild the zip from them client-side.
+    if (c.mode === 'snapshot') { _vivFiguresZipClient(base, name); return; }
+    var url = '/api/investigation/' + encodeURIComponent(name) + '/figures.zip';
     var a = document.createElement('a');
     a.href = url; a.download = name + '-figures.zip';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
+  // Lazily load JSZip once (snapshot download only — never on the hot path).
+  function _vivEnsureJSZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    if (window._jsZipLoading) return window._jsZipLoading;
+    window._jsZipLoading = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = function () { window.JSZip ? resolve(window.JSZip) : reject(new Error('JSZip missing')); };
+      s.onerror = function () { reject(new Error('JSZip failed to load')); };
+      document.head.appendChild(s);
+    });
+    return window._jsZipLoading;
+  }
+
+  // Build an investigation's figures zip in the browser from the published
+  // gallery files (listed in figures/<name>/files.json). Falls back to opening
+  // the gallery when zipping isn't possible (offline, blocked CDN, fetch error).
+  window._vivFiguresZipClient = function (base, name) {
+    var dir = base + '/figures/' + encodeURIComponent(name);
+    var note = (window._toast || function (m) { try { console.log(m); } catch (e) {} });
+    note('Building figures zip…');
+    fetch(dir + '/files.json')
+      .then(function (r) { if (!r.ok) throw new Error('manifest ' + r.status); return r.json(); })
+      .then(function (files) {
+        return _vivEnsureJSZip().then(function (JSZip) {
+          var zip = new JSZip();
+          return Promise.all((files || []).map(function (rel) {
+            var u = dir + '/' + rel.split('/').map(encodeURIComponent).join('/');
+            return fetch(u)
+              .then(function (r) { if (!r.ok) throw new Error(rel + ' ' + r.status); return r.blob(); })
+              .then(function (b) { zip.file(rel, b); });
+          })).then(function () { return zip.generateAsync({ type: 'blob' }); });
+        });
+      })
+      .then(function (blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name + '-figures.zip';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 10000);
+        note('Figures zip ready.');
+      })
+      .catch(function (err) {
+        try { console.error('figures zip (client) failed', err); } catch (e) {}
+        note('Could not build the zip — opening the gallery instead.');
+        window.open(dir + '/index.html', '_blank', 'noopener');
+      });
   };
 
   // ── "Open in the browser" link variants (vs. the ↓ download handlers above) ──
