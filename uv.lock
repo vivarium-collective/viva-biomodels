@@ -853,6 +853,15 @@ wheels = [
 ]
 
 [[package]]
+name = "engine-core"
+version = "0.1.0"
+source = { git = "https://github.com/vivarium-collective/engine-core.git?branch=main#161b42a3add84468a673dd620972bb1e610f1978" }
+dependencies = [
+    { name = "bigraph-schema" },
+    { name = "process-bigraph" },
+]
+
+[[package]]
 name = "executing"
 version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4402,6 +4411,7 @@ dependencies = [
     { name = "bigraph-schema" },
     { name = "bigraph-viz" },
     { name = "biomodels" },
+    { name = "engine-core" },
     { name = "h5py" },
     { name = "jinja2" },
     { name = "jsonschema", extra = ["format-nongpl"] },
@@ -4442,6 +4452,7 @@ requires-dist = [
     { name = "bigraph-schema" },
     { name = "bigraph-viz", specifier = ">=2.0.3" },
     { name = "biomodels" },
+    { name = "engine-core", git = "https://github.com/vivarium-collective/engine-core.git?branch=main" },
     { name = "h5py" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "jsonschema", extras = ["format-nongpl"], specifier = ">=4.21" },

@@ -37,6 +37,9 @@ dependencies = [
     # provider). To drop it, make this a bare "vivarium-workbench" and run `uv lock`
     # (or revert the commit that added it: it changes only this line and uv.lock).
     "vivarium-workbench[chat]",
+    # Shared uniform-time-course / steady-state Step contract the simulator
+    # adapters conform to (the canonical shape the comparison math consumes).
+    "engine-core",
     # Simulator wrappers (absorbed from pbg-biomodels-bundle).
     "viva-tellurium",
     "viva-copasi",
@@ -102,6 +105,7 @@ viva-copasi = { git = "https://github.com/vivarium-collective/viva-copasi.git", 
 viva-simbio = { git = "https://github.com/vivarium-collective/viva-simbio.git", branch = "main" }
 viva-amici = { git = "https://github.com/vivarium-collective/viva-amici.git", branch = "main" }
 viva-pysces = { git = "https://github.com/vivarium-collective/viva-pysces.git", branch = "main" }
+engine-core = { git = "https://github.com/vivarium-collective/engine-core.git", branch = "main" }
 viva-emitters = { git = "https://github.com/vivarium-collective/viva-emitters.git", branch = "main" }
 
 [build-system]
