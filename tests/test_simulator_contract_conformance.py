@@ -90,6 +90,32 @@ def test_utc_step_rejects_degenerate_n_points(name):
         step.update({"model_source": _MODEL, "time": _TIME, "n_points": 1})
 
 
+def test_extract_steady_observables_normalizes_every_upstream_shape():
+    """The normalizer flattens each drifted upstream steady-state shape.
+
+    Deterministic (no backend); guards the shapes the live backends don't all
+    exercise. The steady-state adapters were silently emitting empty observables
+    because they read a key none of the upstreams use.
+    """
+    from viva_biomodels.steps.simulators import _extract_steady_observables
+
+    # copasi / tellurium: nested under "results", one-point series lists.
+    assert _extract_steady_observables(
+        {"results": {"species_concentrations": {"X": [1.5]}, "fluxes": {"R": [0.2]}}}
+    ) == {"X": 1.5, "R": 0.2}
+    # simbio: flat "steady_state_concentrations".
+    assert _extract_steady_observables(
+        {"steady_state_concentrations": {"X": 1.5}}
+    ) == {"X": 1.5}
+    # engine-core contract: result.observables.
+    assert _extract_steady_observables(
+        {"result": {"kind": "steady_state", "time": None, "observables": {"X": 1.5}}}
+    ) == {"X": 1.5}
+    # legacy flat + empty.
+    assert _extract_steady_observables({"observables": {"X": 1.5}}) == {"X": 1.5}
+    assert _extract_steady_observables({}) == {}
+
+
 @pytest.mark.parametrize("name", KNOWN_SIMULATORS)
 def test_steady_state_step_emits_canonical_shape(name):
     """Every backend's steady-state Step emits the canonical tagged shape.
