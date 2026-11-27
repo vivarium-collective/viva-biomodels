@@ -325,18 +325,60 @@ class BiomodelsAmiciStep(Step):
 # ---------------------------------------------------------------------------
 # Steady-state adapters
 #
-# Each adapter lazy-imports the upstream `<Sim>SteadyStateStep` so this
-# module stays importable even when the upstream pip package hasn't shipped
-# the steady-state class yet. The upstream call is expected to return
-# {"observables": {name: float}} (a flat map of final concentrations); the
-# adapter wraps that into the `simulation_result` tagged-union shape with
-# kind="steady_state" and time=None.
+# Each adapter lazy-imports the upstream `<Sim>SteadyStateStep` so this module
+# stays importable even when the upstream package hasn't shipped the steady-state
+# class yet. The upstream steps do NOT share one return shape — each drifted to
+# its own key (copasi/tellurium nest under "results", simbio under
+# "steady_state_concentrations", the engine-core contract under
+# "result"/"observables"). `_extract_steady_observables` normalizes all of them
+# to a flat {id: float} map; the adapter then wraps that into the
+# `simulation_result` tagged shape (kind="steady_state", time=None).
 # ---------------------------------------------------------------------------
 
 
 _STEADY_STATE_INPUTS: Dict[str, str] = {
     "model_source": "string",
 }
+
+
+def _scalar(v: Any) -> float:
+    """A steady value: the last element of a one-point series, or the value."""
+    if isinstance(v, (list, tuple)):
+        return float(v[-1]) if v else 0.0
+    return float(v)
+
+
+def _extract_steady_observables(out: Dict[str, Any]) -> Dict[str, float]:
+    """Normalize any upstream steady-state return to a flat {id: float} map.
+
+    Handles the drifted upstream shapes so the comparison layer sees one form:
+    - engine-core contract: ``{"result": {"observables": {id: float}}}``
+    - copasi / tellurium:    ``{"results": {"species_concentrations": {id: [v]},
+                                            "fluxes": {id: [v]}}}``
+    - simbio:                ``{"steady_state_concentrations": {id: float}}``
+    - legacy flat:           ``{"observables": {id: float}}``
+    """
+    out = out or {}
+
+    result = out.get("result")
+    if isinstance(result, dict) and isinstance(result.get("observables"), dict):
+        return {k: _scalar(v) for k, v in result["observables"].items()}
+
+    results = out.get("results")
+    if isinstance(results, dict):
+        obs: Dict[str, float] = {}
+        for group in ("species_concentrations", "fluxes"):
+            for k, v in (results.get(group) or {}).items():
+                obs[k] = _scalar(v)
+        if obs:
+            return obs
+
+    for flat_key in ("steady_state_concentrations", "observables"):
+        flat = out.get(flat_key)
+        if isinstance(flat, dict):
+            return {k: _scalar(v) for k, v in flat.items()}
+
+    return {}
 
 
 def _emit_steady_state(observables_map: Dict[str, Any]) -> Dict[str, Any]:
@@ -361,12 +403,12 @@ class BiomodelsCopasiSteadyStateStep(Step):
         return {"result": "simulation_result"}
 
     def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        from pbg_copasi.processes import CopasiSteadyStateStep  # lazy upstream import
+        from viva_copasi.processes import CopasiSteadyStateStep  # lazy upstream import
         inner = CopasiSteadyStateStep(
             config={"model_source": state["model_source"]}, core=self.core,
         )
         out = inner.update({})
-        return _emit_steady_state(out.get("observables") or {})
+        return _emit_steady_state(_extract_steady_observables(out))
 
 
 class BiomodelsTelluriumSteadyStateStep(Step):
@@ -381,12 +423,12 @@ class BiomodelsTelluriumSteadyStateStep(Step):
         return {"result": "simulation_result"}
 
     def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        from pbg_tellurium.processes import TelluriumSteadyStateStep  # lazy upstream import
+        from viva_tellurium.processes import TelluriumSteadyStateStep  # lazy upstream import
         inner = TelluriumSteadyStateStep(
             config={"model_source": state["model_source"]}, core=self.core,
         )
         out = inner.update({})
-        return _emit_steady_state(out.get("observables") or {})
+        return _emit_steady_state(_extract_steady_observables(out))
 
 
 class BiomodelsSimbioSteadyStateStep(Step):
@@ -406,4 +448,4 @@ class BiomodelsSimbioSteadyStateStep(Step):
             config={"model_source": state["model_source"]}, core=self.core,
         )
         out = inner.update({})
-        return _emit_steady_state(out.get("observables") or {})
+        return _emit_steady_state(_extract_steady_observables(out))
