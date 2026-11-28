@@ -38,28 +38,30 @@ from viva_biomodels.simulators import KNOWN_SIMULATORS
 
 
 def _UTC_CLASS_FOR(simulator_name: str):
-    """Return the UTC adapter class for the given simulator.
+    """Return the full-report UTC Step class for the given simulator.
 
-    amici has no local Biomodels adapter — viva-amici's AmiciUTCStep already
-    speaks the model_source/time/n_points -> {result} contract, so it's used
-    directly. Imported lazily because amici is an optional extra.
+    The engine-specific full-report steps (species concentrations + reaction
+    fluxes) now live in the wrapper repos, each conforming to the engine_core
+    uniform-time-course contract; simbio keeps a thin local runtime-input adapter
+    over its species-only ``SimbioUTCStep``. Imported lazily because the engine
+    wrappers are optional extras.
     """
     if simulator_name == "amici":
-        from viva_biomodels.steps.simulators import BiomodelsAmiciStep
-        return BiomodelsAmiciStep
+        from viva_amici.processes import AmiciFullReportUTCStep
+        return AmiciFullReportUTCStep
     if simulator_name == "pysces":
-        from viva_biomodels.steps.simulators import BiomodelsPyscesStep
-        return BiomodelsPyscesStep
-    from viva_biomodels.steps.simulators import (
-        BiomodelsCopasiStep,
-        BiomodelsSimbioStep,
-        BiomodelsTelluriumStep,
-    )
-    return {
-        "copasi":    BiomodelsCopasiStep,
-        "tellurium": BiomodelsTelluriumStep,
-        "simbio":    BiomodelsSimbioStep,
-    }[simulator_name]
+        from viva_pysces.processes import PyscesFullReportUTCStep
+        return PyscesFullReportUTCStep
+    if simulator_name == "copasi":
+        from viva_copasi.processes import CopasiFullReportUTCStep
+        return CopasiFullReportUTCStep
+    if simulator_name == "tellurium":
+        from viva_tellurium.processes import TelluriumFullReportUTCStep
+        return TelluriumFullReportUTCStep
+    if simulator_name == "simbio":
+        from viva_biomodels.steps.simulators import BiomodelsSimbioStep
+        return BiomodelsSimbioStep
+    raise KeyError(f"unknown simulator: {simulator_name}")
 
 
 def _SS_CLASS_FOR(simulator_name: str):
