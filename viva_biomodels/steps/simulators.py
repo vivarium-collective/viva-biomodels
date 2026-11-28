@@ -1,10 +1,16 @@
-"""Thin runtime-input wrappers around pbg-copasi / pbg-tellurium / viva-simbio UTC Steps.
+"""Runtime-input adapter + steady-state adapters for the compare-biomodel composite.
 
-Adapter Steps for the compare-biomodel composite: take ``model_source``,
-``time``, ``n_points`` as runtime inputs (so LoadBiomodelStep can feed
-them dynamically) and emit the canonical ``numeric_result`` shape on the
-``result`` output port. Delegates the actual simulation to the canonical
-classes in pbg-tellurium, pbg-copasi, and viva-simbio.
+The full-report UTC Steps (species concentrations + reaction fluxes) that drive
+COPASI / roadrunner / PySCeS / AMICI now live in their own wrapper repos
+(``viva_copasi.processes.CopasiFullReportUTCStep`` etc.), conforming to the
+``engine_core`` uniform-time-course contract — the registry points straight at
+them. What remains here is engine-agnostic glue:
+
+* :class:`BiomodelsSimbioStep` — a thin runtime-input adapter over
+  ``viva_simbio.SimbioUTCStep`` (simbio takes its inputs via config, so this
+  feeds ``model_source`` / ``time`` / ``n_points`` through).
+* the steady-state adapters, which normalize each engine's steady-state return
+  (``_extract_steady_observables``) into the canonical tagged shape.
 """
 from __future__ import annotations
 
@@ -30,131 +36,6 @@ def _validate_n_points(n: Any, where: str) -> int:
     if n < 2:
         raise ValueError(f"{where}: n_points must be >= 2, got {n}")
     return n
-
-
-class BiomodelsCopasiStep(Step):
-    """Adapter: runtime ``model_source`` → ``pbg_copasi.CopasiUTCStep``.
-
-    CopasiUTCStep.config_schema uses keys: model_source, time, n_points.
-    Its update() already returns {'result': {'time', 'columns', 'values'}},
-    so no reshape is needed — pass through directly.
-    """
-
-    config_schema: ClassVar[Dict[str, Any]] = {}
-
-    def inputs(self) -> Dict[str, str]:
-        return dict(_UTC_INPUTS)
-
-    def outputs(self) -> Dict[str, str]:
-        return {"result": "numeric_result"}
-
-    def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        n_points = _validate_n_points(state["n_points"], "BiomodelsCopasiStep")
-        # Drive basico/COPASI directly so the time course reports the SED-ML
-        # report's full variable set — floating species AND reaction fluxes —
-        # keyed by SBML id (the reference's labels), rather than the species-only
-        # output of the upstream CopasiUTCStep. Same engine the BioSimulators
-        # COPASI reference used, so the fluxes repeat-match natively. Constant
-        # parameters/compartments are completed downstream (report_variables).
-        import basico
-
-        basico.load_model(state["model_source"])
-        sp = basico.get_species()
-        rx = basico.get_reactions()
-
-        # (output_selection token, canonical sbml-id) pairs, kept aligned.
-        # - get_species()/get_reactions() return None for a model with no
-        #   species / no reactions (e.g. rule-only or reaction-less models) —
-        #   guard against that instead of dereferencing None.
-        # - Select species by their COPASI **display_name**, not the index name:
-        #   when two species share a display name across compartments COPASI
-        #   disambiguates them ("H2O2{phagosome}"), so a bare "[H2O2]" selection
-        #   resolves to nothing and the whole run is lost. display_name is the
-        #   unique label COPASI emits (and equals the plain name when unique, so
-        #   single-compartment models are unaffected).
-        pairs: list[tuple[str, str]] = [("Time", "time")]
-        if sp is not None:
-            sp_names = sp["display_name"] if "display_name" in sp.columns else sp.index
-            for name, sid in zip(sp_names, sp["sbml_id"]):
-                pairs.append((f"[{name}]", str(sid)))
-        if rx is not None:
-            for name, sid in zip(rx.index, rx["sbml_id"]):
-                pairs.append((f"({name}).Flux", str(sid)))
-
-        selection = [sel for sel, _ in pairs]
-        df = basico.run_time_course_with_output(
-            output_selection=selection,
-            duration=float(state["time"]),
-            intervals=n_points - 1,
-            use_initial_values=True,
-        )
-        # Keep only the columns COPASI actually produced, preserving the
-        # selection↔sbml-id alignment; a token COPASI could not resolve is
-        # dropped rather than raising a KeyError that discards the whole run.
-        keep = [(sel, oid) for sel, oid in pairs if sel in df.columns]
-        df = df[[sel for sel, _ in keep]]
-        rows = df.values.tolist()
-        time_list = [float(r[0]) for r in rows]
-        columns = [oid for _, oid in keep[1:]]  # drop the leading Time/time pair
-        values = [[float(v) for v in r[1:]] for r in rows]
-        return {"result": {"time": time_list, "columns": columns, "values": values}}
-
-
-class BiomodelsTelluriumStep(Step):
-    """Adapter: runtime ``model_source`` → ``pbg_tellurium.TelluriumUTCStep``.
-
-    TelluriumUTCStep.config_schema uses keys: model (the SBML/antimony
-    source string), model_format, start_time, end_time, n_points.
-    Its update() returns {'time_series': list, 'species_trajectories': map[list]};
-    this wrapper reshapes to the canonical {'result': {'time', 'columns', 'values'}}.
-    """
-
-    config_schema: ClassVar[Dict[str, Any]] = {}
-
-    def inputs(self) -> Dict[str, str]:
-        return dict(_UTC_INPUTS)
-
-    def outputs(self) -> Dict[str, str]:
-        return {"result": "numeric_result"}
-
-    def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        n_points = _validate_n_points(state["n_points"], "BiomodelsTelluriumStep")
-        # Drive roadrunner directly so we can select the SED-ML report's full
-        # variable set — floating species AND reaction rates (fluxes) — rather
-        # than the species-only output of the upstream TelluriumUTCStep. This is
-        # the same engine (libroadrunner) the BioSimulators tellurium reference
-        # used, so the reaction rates repeat-match the reference natively. Global
-        # parameters + compartments (constant) are completed downstream from the
-        # SBML (see viva_biomodels.report_variables).
-        import roadrunner
-
-        rr = roadrunner.RoadRunner(state["model_source"])
-        species = list(rr.model.getFloatingSpeciesIds())
-        reactions = list(rr.model.getReactionIds())
-        # Select species as CONCENTRATIONS (`[S]`), not RoadRunner's bare-id
-        # default — a bare `S` returns the amount for a substance-units species,
-        # so an amount-defined species came out a compartment-size factor off
-        # from COPASI/PySCeS (which report concentrations) and from tellurium's
-        # own earlier releases. Reporting `[S]` restores the concentration
-        # convention shared across engines (reviewer findings, 2026-10-28:
-        # tellurium's compartment-sized rescaling). The column LABELS stay the
-        # bare ids so a variable still aligns across engines for comparison.
-        conc_selections = ["[%s]" % s for s in species]
-        rr.selections = ["time"] + conc_selections + reactions
-        arr = rr.simulate(0.0, float(state["time"]), n_points)
-        data = [[float(v) for v in row] for row in arr]
-        # First column is time; the rest are the selected observables, labelled
-        # by their bare SBML ids (species concentrations, then reaction rates).
-        time_list = [row[0] for row in data]
-        columns = species + reactions
-        values = [row[1:] for row in data]
-        return {
-            "result": {
-                "time":    time_list,
-                "columns": columns,
-                "values":  values,
-            }
-        }
 
 
 class BiomodelsSimbioStep(Step):
@@ -192,134 +73,6 @@ class BiomodelsSimbioStep(Step):
         inner = SimbioUTCStep(config=config, core=self.core)
         out = inner.update({})
         return {"result": out["result"]}
-
-
-class BiomodelsPyscesStep(Step):
-    """Adapter: runtime ``model_source`` → PySCeS, emitting the full report set.
-
-    Drives PySCeS directly so the results carry the SED-ML report's variable
-    set — floating species (``getSpecies``) AND reaction fluxes (``getRates``) —
-    plus each compartment's PySCeS value. PySCeS works in concentration space, so
-    it reports compartments as their normalized value (typically ``1``) and
-    fluxes in concentration/time; the BioSimulators PySCeS reference did the same,
-    so both repeat-match natively (this is why a uniform SBML-size compartment
-    fill mismatched the pysces reference — PySCeS's own value is the faithful one).
-    """
-
-    config_schema: ClassVar[Dict[str, Any]] = {}
-
-    def inputs(self) -> Dict[str, str]:
-        return dict(_UTC_INPUTS)
-
-    def outputs(self) -> Dict[str, str]:
-        return {"result": "numeric_result"}
-
-    def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        import libsbml
-        from viva_pysces.processes import _load_model
-        # Integrate through viva_pysces._simulate_utc (viva-pysces#2): LSODA first
-        # (non-stiff fast path unchanged), retry stiff all-NaN failures with CVODE
-        # when Assimulo is available, and RAISE on total failure — so a stiff model
-        # that LSODA can only drive to all-NaN surfaces as an honest failure here
-        # instead of an all-NaN "ok" leaf. Falls back to the old doSim path when the
-        # installed viva_pysces predates _simulate_utc.
-        try:
-            from viva_pysces.processes import _simulate_utc
-        except ImportError:  # pragma: no cover - older viva_pysces
-            _simulate_utc = None
-
-        n_points = _validate_n_points(state["n_points"], "BiomodelsPyscesStep")
-        model = _load_model(state["model_source"], quiet=True)
-        if _simulate_utc is not None:
-            _simulate_utc(model, float(state["time"]), n_points, True)
-        else:
-            model.doSim(end=float(state["time"]), points=n_points)
-
-        sarr, slabels = model.data_sim.getSpecies(lbls=True)   # Time + species ids
-        rarr, rlabels = model.data_sim.getRates(lbls=True)     # Time + reaction ids
-        sp_cols = [str(c) for c in slabels[1:]]
-        rx_cols = [str(c) for c in rlabels[1:]]
-
-        # Compartments: PySCeS exposes each as a model attribute (its normalized
-        # concentration-space value). Emit them so they repeat-match the pysces
-        # reference rather than a uniform SBML-size fill.
-        sd = libsbml.readSBML(state["model_source"])
-        comp_ids = [c.getId() for c in sd.getModel().getListOfCompartments()]
-        comp_vals = {cid: float(getattr(model, cid)) for cid in comp_ids
-                     if getattr(model, cid, None) is not None}
-
-        times = [float(row[0]) for row in sarr]
-        n_rows = len(times)
-        columns = sp_cols + rx_cols + list(comp_vals.keys())
-        values = []
-        for i in range(n_rows):
-            row = [float(sarr[i][j + 1]) for j in range(len(sp_cols))]
-            row += [float(rarr[i][j + 1]) for j in range(len(rx_cols))]
-            row += [comp_vals[cid] for cid in comp_vals]
-            values.append(row)
-        return {"result": {"time": times, "columns": columns, "values": values}}
-
-
-class BiomodelsAmiciStep(Step):
-    """Adapter: runtime ``model_source`` → AMICI, emitting the full report set.
-
-    Runs AMICI (newer sundials API) and emits floating species (``rdata.x`` /
-    state ids) AND reaction fluxes (``rdata.w`` for the model's ``flux_<Rid>``
-    expressions, renamed to the bare SBML reaction id). Same engine the
-    BioSimulators AMICI reference used, so both repeat-match natively. Constant
-    parameters/compartments are completed downstream (report_variables).
-    """
-
-    config_schema: ClassVar[Dict[str, Any]] = {}
-
-    def inputs(self) -> Dict[str, str]:
-        return dict(_UTC_INPUTS)
-
-    def outputs(self) -> Dict[str, str]:
-        return {"result": "numeric_result"}
-
-    def update(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        import numpy as np
-        from amici.sim.sundials import run_simulation
-        from viva_amici.processes import _configure_solver, _load_model
-
-        n_points = _validate_n_points(state["n_points"], "BiomodelsAmiciStep")
-        horizon = float(state["time"])
-        _mod, model = _load_model(
-            {"sbml_file": state["model_source"], "antimony": "", "sbml": ""}
-        )
-        solver = model.create_solver()
-        _configure_solver(solver, self.config)
-
-        state_ids = list(model.get_state_ids())
-        model.set_initial_state(list(model.get_initial_state()))
-        timepoints = [horizon * i / (n_points - 1) for i in range(n_points)]
-        model.set_t0(0.0)
-        model.set_timepoints([float(t) for t in timepoints])
-
-        rdata = run_simulation(model, solver)
-        if int(rdata.status) != 0:
-            raise RuntimeError(
-                f"AMICI UTC integration failed: status={int(rdata.status)} "
-                f"over horizon={horizon} with n_points={n_points}"
-            )
-
-        xs = rdata.x
-        # Reaction fluxes live in the expression vector rdata.w as flux_<Rid>.
-        expr_ids = list(model.get_expression_ids()) if hasattr(model, "get_expression_ids") else []
-        flux = [(i, eid[len("flux_"):]) for i, eid in enumerate(expr_ids)
-                if eid.startswith("flux_")]
-        w = getattr(rdata, "w", None)
-        wnp = np.asarray(w) if w is not None else None
-
-        columns = list(state_ids) + [rid for _, rid in flux]
-        values = []
-        for r in range(len(timepoints)):
-            row = [float(xs[r][c]) for c in range(len(state_ids))]
-            if wnp is not None:
-                row += [float(wnp[r][i]) for i, _ in flux]
-            values.append(row)
-        return {"result": {"time": list(timepoints), "columns": columns, "values": values}}
 
 
 # ---------------------------------------------------------------------------

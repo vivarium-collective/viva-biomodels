@@ -28,8 +28,8 @@ from viva_superpowers.composite_generator import composite_generator
 
 
 LOAD_STEP_ADDRESS = "local:viva_biomodels.steps.load_biomodel.LoadBiomodelStep"
-COPASI_STEP_ADDRESS = "local:viva_biomodels.steps.simulators.BiomodelsCopasiStep"
-TELLURIUM_STEP_ADDRESS = "local:viva_biomodels.steps.simulators.BiomodelsTelluriumStep"
+COPASI_STEP_ADDRESS = "local:viva_copasi.processes.CopasiFullReportUTCStep"
+TELLURIUM_STEP_ADDRESS = "local:viva_tellurium.processes.TelluriumFullReportUTCStep"
 SIMBIO_STEP_ADDRESS = "local:viva_biomodels.steps.simulators.BiomodelsSimbioStep"
 COMPARISON_STEP_ADDRESS = "local:viva_biomodels.steps.simulator_comparison.SimulatorComparisonStep"
 VISUALIZATION_STEP_ADDRESS = "local:viva_biomodels.visualizations.compare_overlay.CompareOverlay"

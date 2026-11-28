@@ -14,7 +14,9 @@ from process_bigraph import allocate_core
 # entirely when it isn't importable (mirrors how the runner treats pysces as optional).
 pytest.importorskip("viva_pysces", reason="requires the viva-biomodels[pysces] extra")
 
-from viva_biomodels.steps.simulators import BiomodelsPyscesStep
+# The full-report PySCeS UTC Step moved into the viva-pysces wrapper; this
+# honest-failure regression now exercises it there (same _simulate_utc routing).
+from viva_pysces.processes import PyscesFullReportUTCStep as BiomodelsPyscesStep
 
 
 @pytest.fixture

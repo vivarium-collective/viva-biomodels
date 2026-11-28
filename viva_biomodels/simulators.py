@@ -29,7 +29,7 @@ class SimulatorSpec(TypedDict):
 
 _SIMULATORS: Dict[str, SimulatorSpec] = {
     "copasi": {
-        "utc_step": "local:viva_biomodels.steps.simulators.BiomodelsCopasiStep",
+        "utc_step": "local:viva_copasi.processes.CopasiFullReportUTCStep",
         "steady_state_step": "local:viva_biomodels.steps.simulators.BiomodelsCopasiSteadyStateStep",
         "process": "local:CopasiUTCProcess",
         "process_config": lambda sbml: {
@@ -40,7 +40,7 @@ _SIMULATORS: Dict[str, SimulatorSpec] = {
         "species_out": "species_concentrations",
     },
     "tellurium": {
-        "utc_step": "local:viva_biomodels.steps.simulators.BiomodelsTelluriumStep",
+        "utc_step": "local:viva_tellurium.processes.TelluriumFullReportUTCStep",
         "steady_state_step": "local:viva_biomodels.steps.simulators.BiomodelsTelluriumSteadyStateStep",
         "process": "local:TelluriumProcess",
         "process_config": lambda sbml: {"model_file": sbml, "bulk_species": False},
@@ -132,8 +132,8 @@ def resolve_simulators(spec) -> List[str]:
 # installs omit top_level.txt, so bigraph-schema's dist-walker can't discover
 # its Edges); registering here keeps `local:<Sim>UTCProcess` resolvable.
 _PROCESS_CLASSES = {
-    "copasi": ("pbg_copasi.processes", "CopasiUTCProcess"),
-    "tellurium": ("pbg_tellurium.processes", "TelluriumProcess"),
+    "copasi": ("viva_copasi.processes", "CopasiUTCProcess"),
+    "tellurium": ("viva_tellurium.processes", "TelluriumProcess"),
     "simbio": ("viva_simbio.processes", "SimbioUTCProcess"),
     "amici": ("viva_amici.processes", "AmiciProcess"),
     "pysces": ("viva_pysces.processes", "PyscesUTCProcess"),

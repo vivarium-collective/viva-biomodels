@@ -6,14 +6,17 @@ from importlib.resources import files
 
 from process_bigraph import allocate_core
 
-from viva_biomodels.steps.simulators import (
-    BiomodelsCopasiStep,
-    BiomodelsSimbioStep,
-    BiomodelsTelluriumStep,
+from viva_biomodels.steps.simulators import BiomodelsSimbioStep
+
+# The full-report COPASI/tellurium UTC Steps moved into their wrapper repos; this
+# suite now exercises them there (same full-report logic, same contract).
+from viva_copasi.processes import CopasiFullReportUTCStep as BiomodelsCopasiStep
+from viva_tellurium.processes import (
+    TelluriumFullReportUTCStep as BiomodelsTelluriumStep,
 )
-from pbg_copasi.processes import CopasiUTCStep
+from viva_copasi.processes import CopasiUTCStep
 from viva_simbio.processes import SimbioUTCStep
-from pbg_tellurium.processes import TelluriumUTCStep
+from viva_tellurium.processes import TelluriumUTCStep
 
 
 def _model_path() -> str:

@@ -12,9 +12,9 @@ import pytest
 from process_bigraph import allocate_core
 
 # Force eager import of the simulators module so its top-level
-# `from pbg_copasi.processes import CopasiUTCStep` runs against the real
+# `from viva_copasi.processes import CopasiSteadyStateStep` runs against the real
 # upstream module BEFORE `_patch_upstream` ever inserts a stand-in module.
-# Without this, the first test would replace `pbg_copasi.processes` in
+# Without this, the first test would replace `viva_copasi.processes` in
 # sys.modules with an empty stub, then fail at simulator-module load.
 import viva_biomodels.steps.simulators  # noqa: F401
 
@@ -46,7 +46,7 @@ class _FakeSteadyStateClass:
 
 
 def test_copasi_steady_state_adapter(monkeypatch):
-    _patch_upstream(monkeypatch, "pbg_copasi.processes",
+    _patch_upstream(monkeypatch, "viva_copasi.processes",
                     "CopasiSteadyStateStep", _FakeSteadyStateClass)
     from viva_biomodels.steps.simulators import BiomodelsCopasiSteadyStateStep
     out = BiomodelsCopasiSteadyStateStep(core=allocate_core()).update({"model_source": "/tmp/m.xml"})
@@ -57,7 +57,7 @@ def test_copasi_steady_state_adapter(monkeypatch):
 
 
 def test_tellurium_steady_state_adapter(monkeypatch):
-    _patch_upstream(monkeypatch, "pbg_tellurium.processes",
+    _patch_upstream(monkeypatch, "viva_tellurium.processes",
                     "TelluriumSteadyStateStep", _FakeSteadyStateClass)
     from viva_biomodels.steps.simulators import BiomodelsTelluriumSteadyStateStep
     out = BiomodelsTelluriumSteadyStateStep(core=allocate_core()).update({"model_source": "/tmp/m.xml"})

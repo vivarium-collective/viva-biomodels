@@ -17,7 +17,9 @@ import libsbml
 import pytest
 from process_bigraph import allocate_core
 
-from viva_biomodels.steps.simulators import BiomodelsCopasiStep
+# The full-report COPASI UTC Step moved into the viva-copasi wrapper; this
+# regression suite now exercises it there (same display-name/flux logic).
+from viva_copasi.processes import CopasiFullReportUTCStep as BiomodelsCopasiStep
 
 
 def _sbml_string(build) -> str:
